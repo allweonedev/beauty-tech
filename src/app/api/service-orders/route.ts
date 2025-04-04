@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
     // Calculate skip for pagination
     const skip = page * limit;
 
+    // Get total count
+    const totalCount = await db.serviceOrder.count();
+
     // Fetch service orders from the database with pagination
     const serviceOrders = await db.serviceOrder.findMany({
       skip,
@@ -53,7 +56,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(serviceOrders);
+    return NextResponse.json({
+      data: serviceOrders,
+      meta: {
+        totalCount,
+        page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Error fetching service orders:", error);
     return NextResponse.json(

@@ -85,9 +85,7 @@ export interface DataTableProps<
   isMutating?: boolean;
 
   // Infinite loading props
-  onLoadMore?: () => void;
   hasMore?: boolean;
-  isLoadingMore?: boolean;
 
   // Pagination props
   onPageSizeChange?: (size: number) => void;

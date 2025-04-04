@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
     // Calculate skip for pagination
     const skip = page * limit;
 
+    // Get total count
+    const totalCount = await db.contract.count();
+
     // Fetch contracts from the database with pagination
     const contracts = await db.contract.findMany({
       skip,
@@ -50,7 +53,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(contracts);
+    return NextResponse.json({
+      data: contracts,
+      meta: {
+        totalCount,
+        page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Error fetching contracts:", error);
     return NextResponse.json(

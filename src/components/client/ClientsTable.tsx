@@ -11,10 +11,7 @@ interface ClientsListProps {
   onEditClient?: (client: Client) => void;
   isLoading?: boolean;
   isMutating?: boolean;
-  // Infinite loading props
-  onLoadMore?: () => void;
   hasMore?: boolean;
-  isLoadingMore?: boolean;
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
@@ -30,9 +27,7 @@ export function ClientsList({
   onEditClient,
   isLoading = false,
   isMutating = false,
-  onLoadMore,
   hasMore,
-  isLoadingMore,
   onPageSizeChange,
   currentPageSize,
   totalCount,
@@ -72,9 +67,7 @@ export function ClientsList({
       isLoading={isLoading}
       isMutating={isMutating}
       // Infinite loading
-      onLoadMore={onLoadMore}
       hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
       // Pagination
       onPageSizeChange={onPageSizeChange}
       currentPageSize={currentPageSize}

@@ -5,6 +5,7 @@ import { getServiceOrderColumns } from "./ServiceOrderColumns";
 import type { ServiceOrder } from "./ServiceOrderModal";
 import { useTranslations } from "next-intl";
 import { useBulkDeleteServiceOrders } from "@/hooks/useServiceOrders";
+import { type UseQueryResult } from "@tanstack/react-query";
 
 interface ServiceOrdersTableProps {
   serviceOrders: ServiceOrder[];
@@ -13,12 +14,16 @@ interface ServiceOrdersTableProps {
   isLoading?: boolean;
   isMutating?: boolean;
   // Infinite loading props
-  onLoadMore?: () => void;
   hasMore?: boolean;
-  isLoadingMore?: boolean;
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
+  // Server-side pagination props
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  currentPage?: number;
+  // Server-side search
+  useServerSearch?: (searchTerm: string) => UseQueryResult<ServiceOrder[]>;
 }
 
 export default function ServiceOrdersTable({
@@ -27,11 +32,13 @@ export default function ServiceOrdersTable({
   onEditServiceOrder,
   isLoading = false,
   isMutating = false,
-  onLoadMore,
   hasMore,
-  isLoadingMore,
   onPageSizeChange,
   currentPageSize,
+  totalCount,
+  onPageChange,
+  currentPage,
+  useServerSearch,
 }: ServiceOrdersTableProps) {
   const t = useTranslations();
 
@@ -66,9 +73,7 @@ export default function ServiceOrdersTable({
       isLoading={isLoading}
       isMutating={isMutating}
       // Infinite loading
-      onLoadMore={onLoadMore}
       hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
       // Pagination
       onPageSizeChange={onPageSizeChange}
       currentPageSize={currentPageSize}
@@ -88,6 +93,13 @@ export default function ServiceOrdersTable({
       newItemLabel={t("serviceOrders.newServiceOrder")}
       emptyStateMessage={t("serviceOrders.noServiceOrdersRegistered")}
       filteredEmptyStateMessage={t("serviceOrders.noServiceOrdersFound")}
+      // Server-side pagination
+      totalCount={totalCount}
+      onPageChange={onPageChange}
+      currentPage={currentPage}
+      // Server-side search
+      useServerSearch={useServerSearch}
+      serverSearchDebounce={300}
     />
   );
 }

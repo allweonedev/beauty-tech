@@ -1,16 +1,17 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import ServiceOrdersTable from "@/components/service-order/ServiceOrdersTable";
 import { ServiceOrderModal } from "@/components/service-order/ServiceOrderModal";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  useServiceOrders,
+  usePaginatedServiceOrders,
   useCreateServiceOrder,
   useUpdateServiceOrder,
   useDeleteServiceOrder,
   useBulkDeleteServiceOrders,
+  useServiceOrderSearch,
 } from "@/hooks/useServiceOrders";
 import type { ServiceOrder } from "@/components/service-order/ServiceOrderModal";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -23,10 +24,29 @@ export default function ServiceOrdersPage() {
     ServiceOrder | undefined
   >();
   const { toast } = useToast();
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
-  // Fetch service orders
-  const { data: serviceOrders = [], isLoading } = useServiceOrders();
-  // Remove client and product data fetching since the selects will handle it
+  // Fetch service orders with pagination
+  const { data: serviceOrdersData, isLoading } = usePaginatedServiceOrders(
+    pageSize,
+    currentPage
+  );
+
+  // Generate flat list of service orders from paginated data
+  const serviceOrders = React.useMemo(() => {
+    if (!serviceOrdersData) return [];
+    return serviceOrdersData.pages.flatMap(
+      (page) => page.data as ServiceOrder[]
+    );
+  }, [serviceOrdersData]);
+
+  // Get the total count from the latest page
+  const totalCount = React.useMemo(() => {
+    if (!serviceOrdersData?.pages || serviceOrdersData.pages.length === 0)
+      return 0;
+    return serviceOrdersData.pages[0].totalCount;
+  }, [serviceOrdersData]);
 
   // Mutations
   const createServiceOrder = useCreateServiceOrder();
@@ -114,7 +134,7 @@ export default function ServiceOrdersPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ServiceOrdersTable
-          serviceOrders={serviceOrders as ServiceOrder[]}
+          serviceOrders={serviceOrders}
           isLoading={isLoading}
           isMutating={isMutating}
           onNewServiceOrder={() => {
@@ -125,6 +145,12 @@ export default function ServiceOrdersPage() {
             setSelectedServiceOrder(serviceOrder);
             setShowServiceOrderModal(true);
           }}
+          onPageSizeChange={setPageSize}
+          currentPageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => setCurrentPage(page)}
+          currentPage={currentPage}
+          useServerSearch={useServiceOrderSearch}
         />
       </main>
 

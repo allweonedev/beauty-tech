@@ -5,6 +5,7 @@ import { getContractColumns } from "./ContractColumns";
 import type { Contract } from "@/types/contract";
 import { useTranslations } from "next-intl";
 import { useBulkDeleteContracts } from "@/hooks/useContracts";
+import { type UseQueryResult } from "@tanstack/react-query";
 
 interface ContractsTableProps {
   contracts: Contract[];
@@ -13,12 +14,16 @@ interface ContractsTableProps {
   isLoading?: boolean;
   isMutating?: boolean;
   // Infinite loading props
-  onLoadMore?: () => void;
   hasMore?: boolean;
-  isLoadingMore?: boolean;
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
+  // Server-side pagination props
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  currentPage?: number;
+  // Server-side search
+  useServerSearch?: (searchTerm: string) => UseQueryResult<Contract[]>;
 }
 
 export default function ContractsTable({
@@ -27,11 +32,13 @@ export default function ContractsTable({
   onEditContract,
   isLoading = false,
   isMutating = false,
-  onLoadMore,
   hasMore,
-  isLoadingMore,
   onPageSizeChange,
   currentPageSize,
+  totalCount,
+  onPageChange,
+  currentPage,
+  useServerSearch,
 }: ContractsTableProps) {
   const t = useTranslations();
 
@@ -66,9 +73,7 @@ export default function ContractsTable({
       isLoading={isLoading}
       isMutating={isMutating}
       // Infinite loading
-      onLoadMore={onLoadMore}
       hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
       // Pagination
       onPageSizeChange={onPageSizeChange}
       currentPageSize={currentPageSize}
@@ -88,6 +93,13 @@ export default function ContractsTable({
       newItemLabel={t("contracts.newContract")}
       emptyStateMessage={t("contracts.noContractsRegistered")}
       filteredEmptyStateMessage={t("contracts.noContractsFound")}
+      // Server-side pagination
+      totalCount={totalCount}
+      onPageChange={onPageChange}
+      currentPage={currentPage}
+      // Server-side search
+      useServerSearch={useServerSearch}
+      serverSearchDebounce={300}
     />
   );
 }

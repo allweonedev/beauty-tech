@@ -44,10 +44,10 @@ export function useServiceOrders() {
 }
 
 // Hook for getting paginated service orders
-export function usePaginatedServiceOrders(pageSize = 10) {
+export function usePaginatedServiceOrders(pageSize = 10, page = 0) {
   return useInfiniteQuery({
-    queryKey: [...serviceOrdersQueryKey, "paginated"],
-    initialPageParam: 0,
+    queryKey: [...serviceOrdersQueryKey, "paginated", pageSize, page],
+    initialPageParam: page,
     queryFn: async ({ pageParam }) => {
       const response = await api.get("/api/service-orders", {
         query: {
@@ -56,20 +56,44 @@ export function usePaginatedServiceOrders(pageSize = 10) {
         },
       });
 
-      // Parse response to an array of service orders
+      // Handle the new response format
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "data" in response &&
+        "meta" in response
+      ) {
+        const serviceOrders = Array.isArray(response.data) ? response.data : [];
+        const totalCount = response.meta?.totalCount ?? 0;
+
+        // If we've fetched all items, there are no more pages
+        const hasNextPage = (Number(pageParam) + 1) * pageSize < totalCount;
+
+        return {
+          data: serviceOrders,
+          nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+          previousPage:
+            Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
+          hasNextPage,
+          totalCount,
+        };
+      }
+
+      // Fallback for old API format or error
       const serviceOrders = Array.isArray(response) ? response : [];
-
-      // If we receive fewer items than the page size, we know there are no more pages
-      const hasNextPage = serviceOrders.length === pageSize;
-
       return {
         data: serviceOrders,
-        nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+        nextPage:
+          serviceOrders.length === pageSize ? Number(pageParam) + 1 : undefined,
         previousPage: Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
-        hasNextPage,
+        hasNextPage: serviceOrders.length === pageSize,
+        totalCount: 0, // Unknown total count in this case
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -457,5 +481,23 @@ export function useBulkDeleteServiceOrders() {
         queryKey: [...serviceOrdersQueryKey, "paginated"],
       });
     },
+  });
+}
+
+// Hook for searching service orders
+export function useServiceOrderSearch(searchTerm: string) {
+  return useQuery({
+    queryKey: [...serviceOrdersQueryKey, "search", searchTerm],
+    queryFn: async () => {
+      if (!searchTerm.trim()) {
+        return [];
+      }
+      const result = await api.get(`/api/service-orders/search`, {
+        query: { q: searchTerm },
+      });
+      // Cast to unknown first, then to the target type
+      return (Array.isArray(result) ? result : []) as unknown as ServiceOrder[];
+    },
+    enabled: !!searchTerm && searchTerm.trim().length > 0,
   });
 }

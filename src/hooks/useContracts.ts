@@ -27,10 +27,10 @@ export function useContracts() {
 }
 
 // Hook for getting paginated contracts
-export function usePaginatedContracts(pageSize = 10) {
+export function usePaginatedContracts(pageSize = 10, page = 0) {
   return useInfiniteQuery({
-    queryKey: [...contractsQueryKey, "paginated"],
-    initialPageParam: 0,
+    queryKey: [...contractsQueryKey, "paginated", pageSize, page],
+    initialPageParam: page,
     queryFn: async ({ pageParam }) => {
       const response = await api.get("/api/contracts", {
         query: {
@@ -39,20 +39,44 @@ export function usePaginatedContracts(pageSize = 10) {
         },
       });
 
-      // Parse response to an array of contracts
+      // Handle the new response format
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "data" in response &&
+        "meta" in response
+      ) {
+        const contracts = Array.isArray(response.data) ? response.data : [];
+        const totalCount = response.meta?.totalCount ?? 0;
+
+        // If we've fetched all items, there are no more pages
+        const hasNextPage = (Number(pageParam) + 1) * pageSize < totalCount;
+
+        return {
+          data: contracts,
+          nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+          previousPage:
+            Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
+          hasNextPage,
+          totalCount,
+        };
+      }
+
+      // Fallback for old API format or error
       const contracts = Array.isArray(response) ? response : [];
-
-      // If we receive fewer items than the page size, we know there are no more pages
-      const hasNextPage = contracts.length === pageSize;
-
       return {
         data: contracts,
-        nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+        nextPage:
+          contracts.length === pageSize ? Number(pageParam) + 1 : undefined,
         previousPage: Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
-        hasNextPage,
+        hasNextPage: contracts.length === pageSize,
+        totalCount: 0, // Unknown total count in this case
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -426,5 +450,23 @@ export function useBulkDeleteContracts() {
         queryKey: [...contractsQueryKey, "paginated"],
       });
     },
+  });
+}
+
+// Hook for searching contracts
+export function useContractSearch(searchTerm: string) {
+  return useQuery({
+    queryKey: [...contractsQueryKey, "search", searchTerm],
+    queryFn: async () => {
+      if (!searchTerm.trim()) {
+        return [];
+      }
+      const result = await api.get(`/api/contracts/search`, {
+        query: { q: searchTerm },
+      });
+      // Cast to unknown first, then to the target type
+      return (Array.isArray(result) ? result : []) as unknown as Contract[];
+    },
+    enabled: !!searchTerm && searchTerm.trim().length > 0,
   });
 }

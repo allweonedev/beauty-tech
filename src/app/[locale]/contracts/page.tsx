@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import ContractsTable from "@/components/contract/ContractsTable";
@@ -8,7 +8,9 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   useCreateContract,
   useUpdateContract,
-  useContracts,
+  usePaginatedContracts,
+  useBulkDeleteContracts,
+  useContractSearch,
 } from "@/hooks/useContracts";
 import { useClients } from "@/hooks/useClients";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -22,9 +24,24 @@ export default function ContractsPage() {
     Contract | undefined
   >();
   const { toast } = useToast();
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Fetch contracts data
-  const { data: contracts = [], isLoading: contractsLoading } = useContracts();
+  const { data: contractsData, isLoading: contractsLoading } =
+    usePaginatedContracts(pageSize, currentPage);
+
+  // Generate flat list of contracts from paginated data
+  const contracts = React.useMemo(() => {
+    if (!contractsData) return [];
+    return contractsData.pages.flatMap((page) => page.data as Contract[]);
+  }, [contractsData]);
+
+  // Get the total count from the latest page
+  const totalCount = React.useMemo(() => {
+    if (!contractsData?.pages || contractsData.pages.length === 0) return 0;
+    return contractsData.pages[0].totalCount;
+  }, [contractsData]);
 
   // Fetch clients data (for the contract modal)
   const { data: clients = [], isLoading: clientsLoading } = useClients();
@@ -32,6 +49,7 @@ export default function ContractsPage() {
   // Mutations
   const createContract = useCreateContract();
   const updateContract = useUpdateContract();
+  const bulkDeleteContracts = useBulkDeleteContracts();
 
   // Handle contract creation and updates
   const handleSaveContract = (contractData: Partial<Contract>) => {
@@ -84,7 +102,10 @@ export default function ContractsPage() {
 
   // Is any mutation in progress?
   const isMutating =
-    createContract.isPending || updateContract.isPending || clientsLoading;
+    createContract.isPending ||
+    updateContract.isPending ||
+    clientsLoading ||
+    bulkDeleteContracts.isPending;
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -110,7 +131,7 @@ export default function ContractsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ContractsTable
-          contracts={contracts as unknown as Contract[]}
+          contracts={contracts}
           isLoading={contractsLoading}
           isMutating={isMutating}
           onNewContract={() => {
@@ -121,6 +142,12 @@ export default function ContractsPage() {
             setSelectedContract(contract);
             setShowContractModal(true);
           }}
+          onPageSizeChange={setPageSize}
+          currentPageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => setCurrentPage(page)}
+          currentPage={currentPage}
+          useServerSearch={useContractSearch}
         />
       </main>
 

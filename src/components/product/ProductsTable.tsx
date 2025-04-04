@@ -12,9 +12,7 @@ interface ProductsTableProps {
   isLoading?: boolean;
   isMutating?: boolean;
   // Infinite loading props
-  onLoadMore?: () => void;
   hasMore?: boolean;
-  isLoadingMore?: boolean;
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
@@ -30,9 +28,7 @@ export default function ProductsTable({
   onEditProduct,
   isLoading = false,
   isMutating = false,
-  onLoadMore,
   hasMore,
-  isLoadingMore,
   onPageSizeChange,
   currentPageSize,
   totalCount,
@@ -72,9 +68,7 @@ export default function ProductsTable({
       isLoading={isLoading}
       isMutating={isMutating}
       // Infinite loading
-      onLoadMore={onLoadMore}
       hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
       // Pagination
       onPageSizeChange={onPageSizeChange}
       currentPageSize={currentPageSize}
