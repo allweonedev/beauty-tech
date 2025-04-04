@@ -1,7 +1,7 @@
 /** @type {import("eslint").Linter.Config} */
 const config = {
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint"],
+  // plugins: ["@typescript-eslint"],
   parserOptions: {
     project: true,
   },

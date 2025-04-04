@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { type z } from "zod";
 import {
@@ -117,7 +117,7 @@ export default function ReusableFormModal<
 
   // Configure form with zod validation
   const form = useForm<TFormValues>({
-    resolver: zodResolver(schema) as any, // Using any here to bypass type checking issues
+    resolver: zodResolver(schema),
     defaultValues: defaultValues ?? ({} as DefaultValues<TFormValues>),
   });
 
@@ -176,7 +176,7 @@ export default function ReusableFormModal<
 
                 if (currentValue instanceof File) {
                   const uploadResult = uploadResults.find(
-                    (r) => files.indexOf(currentValue) !== -1
+                    (_r) => files.indexOf(currentValue) !== -1
                   );
                   if (uploadResult) {
                     processedData = {
@@ -190,9 +190,9 @@ export default function ReusableFormModal<
                     .filter((f): f is File => f instanceof File)
                     .map((file) => {
                       const uploadResult = uploadResults.find(
-                        (r) => files.indexOf(file) !== -1
+                        (_r) => files.indexOf(file) !== -1
                       );
-                      return uploadResult!.url;
+                      return uploadResult ? uploadResult.ufsUrl : "";
                     })
                     .filter(Boolean);
 
@@ -237,7 +237,7 @@ export default function ReusableFormModal<
         // For update we need to include the ID
         await updateMutation.mutateAsync(
           {
-            id: initialData?.id as string,
+            id: initialData!.id!,
             data: finalData,
           },
           {

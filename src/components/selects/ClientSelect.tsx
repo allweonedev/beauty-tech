@@ -21,6 +21,7 @@ import {
 import { usePaginatedClients, useClientSearch } from "@/hooks/useClients";
 import { Avatar } from "@/components/ui/avatar";
 import { useInView } from "react-intersection-observer";
+import type { Client } from "@/types/client";
 
 interface ClientSelectProps {
   value?: string;
@@ -77,7 +78,7 @@ export function ClientSelect({
 
   // Determine which data to use based on search term
   const isSearching = debouncedSearchTerm.trim().length > 0;
-  const clients = isSearching
+  const clients: Client[] = isSearching
     ? (searchResults ?? [])
     : (paginatedData?.pages.flatMap((page) => page.data) ?? []);
   const isLoading = isSearching ? isLoadingSearch : isLoadingPaginated;
