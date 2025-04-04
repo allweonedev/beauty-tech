@@ -1,0 +1,183 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+}
+
+model User {
+    id        String   @id @default(uuid())
+    email     String   @unique
+    fullName  String?
+    phone     String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now())
+
+    // Auth.js / NextAuth fields
+    name          String?
+    image         String?
+    emailVerified DateTime?
+    role          String    @default("user") // Options: "user", "admin"
+    accounts      Account[]
+
+    @@map("users")
+}
+
+model Client {
+    id            String              @id @default(uuid())
+    name          String
+    email         String?
+    phone         String?
+    cpf           String?
+    address       String?
+    birthDate     DateTime?
+    createdAt     DateTime            @default(now())
+    updatedAt     DateTime            @default(now())
+    appointments  Appointment[]
+    documents     ClientDocument[]
+    notes         ClientNote[]
+    interactions  ClientInteraction[]
+    serviceOrders ServiceOrder[]
+    contracts     Contract[]
+    source        String              @default("manual")
+
+    @@map("clients")
+}
+
+model Appointment {
+    id        String   @id @default(uuid())
+    clientId  String
+    client    Client   @relation(fields: [clientId], references: [id])
+    title     String
+    startTime DateTime
+    endTime   DateTime
+    status    String   @default("pending")
+    notes     String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now())
+
+    @@map("appointments")
+}
+
+model Product {
+    id            String         @id @default(uuid())
+    name          String
+    type          String
+    description   String?
+    price         Decimal        @default(0)
+    imageUrl      String?
+    category      String?
+    application   String?
+    createdAt     DateTime       @default(now())
+    updatedAt     DateTime       @default(now())
+    serviceOrders ServiceOrder[]
+
+    @@map("products")
+}
+
+// Additional models for client relationships
+model ClientDocument {
+    id         String   @id @default(uuid())
+    clientId   String
+    client     Client   @relation(fields: [clientId], references: [id])
+    name       String
+    url        String
+    uploadedAt DateTime @default(now())
+
+    @@map("client_documents")
+}
+
+model ClientNote {
+    id        String   @id @default(uuid())
+    clientId  String
+    client    Client   @relation(fields: [clientId], references: [id])
+    content   String
+    createdAt DateTime @default(now())
+
+    @@map("client_notes")
+}
+
+model ClientInteraction {
+    id          String   @id @default(uuid())
+    clientId    String
+    client      Client   @relation(fields: [clientId], references: [id])
+    type        String
+    description String
+    date        DateTime
+    value       Decimal?
+    createdAt   DateTime @default(now())
+
+    @@map("client_interactions")
+}
+
+model ServiceOrder {
+    id             String    @id @default(uuid())
+    number         String
+    clientId       String
+    client         Client    @relation(fields: [clientId], references: [id])
+    productId      String?
+    product        Product?  @relation(fields: [productId], references: [id])
+    status         String    @default("pending")
+    scheduledDate  DateTime?
+    completedDate  DateTime?
+    description    String?   @default("")
+    technicalNotes String?   @default("")
+    createdAt      DateTime  @default(now())
+    updatedAt      DateTime  @updatedAt
+
+    @@map("service_orders")
+}
+
+model Contract {
+    id           String    @id @default(uuid())
+    number       String    @unique
+    clientId     String
+    client       Client    @relation(fields: [clientId], references: [id])
+    startDate    DateTime
+    endDate      DateTime?
+    value        Decimal
+    status       String    @default("active")
+    description  String?
+    paymentTerms String?
+    renewalTerms String?
+    createdAt    DateTime  @default(now())
+    updatedAt    DateTime  @updatedAt
+
+    @@map("contracts")
+}
+
+// NextAuth.js models
+model Account {
+    id                String  @id @default(uuid())
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? @db.Text
+    session_state     String?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+    @@map("accounts")
+}
+
+model VerificationToken {
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+    @@map("verification_tokens")
+}
