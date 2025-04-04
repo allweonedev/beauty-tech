@@ -253,7 +253,8 @@ export function useDeleteContract() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete("/api/contracts", { query: { id } }),
+    mutationFn: (id: string) =>
+      api.delete("/api/contracts", undefined, { query: { id } }),
 
     // Optimistic update for contract deletion
     onMutate: async (id) => {

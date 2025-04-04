@@ -274,7 +274,7 @@ export function useDeleteServiceOrder() {
 
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete("/api/service-orders", { query: { id } }),
+      api.delete("/api/service-orders", undefined, { query: { id } }),
 
     // Optimistic update for service order deletion
     onMutate: async (id) => {

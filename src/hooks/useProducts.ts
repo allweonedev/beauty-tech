@@ -298,7 +298,8 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete("/api/products", { query: { id } }),
+    mutationFn: (id: string) =>
+      api.delete("/api/products", undefined, { query: { id } }),
 
     // Optimistic update for product deletion
     onMutate: async (id) => {
