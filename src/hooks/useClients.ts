@@ -266,7 +266,8 @@ export function useDeleteClient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete("/api/clients", { query: { id } }),
+    mutationFn: (id: string) =>
+      api.delete("/api/clients", undefined, { query: { id } }),
 
     // Optimistic update for client deletion
     onMutate: async (id) => {

@@ -1,211 +1,109 @@
-import React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { createColumnHelper } from "@tanstack/react-table";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { type ReactNode } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { Edit, MoreVertical, RefreshCw, Trash } from "lucide-react";
-import { type Client } from "@/types/client";
+  createSelectColumn,
+  createActionsColumn,
+  createTwoLineColumn,
+  createDateColumn,
+  createBadgeColumn,
+  createCountColumn,
+} from "@/components/ui/table-column-helper";
+import type { Client } from "@/types/client";
 import { type useTranslations } from "next-intl";
-
-// Extended Client interface with optimistic flag
-interface OptimisticClient extends Client {
-  isOptimistic?: boolean;
-  optimisticOperation?: "create" | "update" | "delete";
-}
+import { useDeleteClient } from "@/hooks/useClients";
 
 interface GetClientColumnsProps {
   t: ReturnType<typeof useTranslations>;
-  onEditClient: (client: Client) => void;
-  onDeleteClient: (clientId: string) => void;
+  onEditClient?: (client: Client) => void;
   isMutating?: boolean;
 }
 
 export function getClientColumns({
   t,
   onEditClient,
-  onDeleteClient,
   isMutating = false,
-}: GetClientColumnsProps): ColumnDef<OptimisticClient>[] {
-  const columnHelper = createColumnHelper<OptimisticClient>();
-
-  return [
+}: GetClientColumnsProps): ColumnDef<Client>[] {
+  const columns: ColumnDef<Client>[] = [
     // Selection column
-    columnHelper.display({
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value: boolean | "indeterminate") =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
-          aria-label="Select all"
-          className="translate-y-[2px]"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value: boolean | "indeterminate") =>
-            row.toggleSelected(!!value)
-          }
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-            e.stopPropagation()
-          }
-          aria-label="Select row"
-          disabled={row.original.isOptimistic}
-          className="translate-y-[2px]"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
+    createSelectColumn<Client>(),
+
+    // Name and CPF
+    createTwoLineColumn<Client>("name", "cpf", t("clients.columns.name"), {
+      secondaryFormatter: (value: unknown): ReactNode =>
+        typeof value === "string" ? value : "-",
     }),
-    columnHelper.accessor("name", {
-      header: t("clients.columns.name"),
-      cell: (info) => (
-        <div>
-          <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
-            {info.getValue()}
-            {info.row.original.isOptimistic && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <RefreshCw className="w-3 h-3 animate-spin text-indigo-500 ml-1" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("clients.sync")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="text-sm text-gray-500">
-            {info.row.original.cpf ?? "-"}
-          </div>
-        </div>
-      ),
-    }),
-    columnHelper.accessor("email", {
-      header: t("clients.columns.contact"),
-      cell: (info) => (
-        <div>
-          <div className="text-sm text-gray-900">{info.getValue() ?? "-"}</div>
-          <div className="text-sm text-gray-500">
-            {info.row.original.phone ?? "-"}
-          </div>
-        </div>
-      ),
-    }),
-    columnHelper.accessor("address", {
+
+    // Contact info
+    createTwoLineColumn<Client>(
+      "email",
+      "phone",
+      t("clients.columns.contact"),
+      {
+        primaryFormatter: (value: unknown): ReactNode =>
+          value !== null && value !== undefined ? String(value) : "-",
+        secondaryFormatter: (value: unknown): ReactNode =>
+          value !== null && value !== undefined ? String(value) : "-",
+      }
+    ),
+
+    // Address
+    {
+      accessorFn: (row) => row.address,
+      id: "address",
       header: t("clients.columns.address"),
-      cell: (info) => (
-        <div className="text-sm text-gray-900">{info.getValue() ?? "-"}</div>
-      ),
-    }),
-    columnHelper.accessor("birthDate", {
-      header: t("clients.columns.birthDate"),
       cell: (info) => {
-        const birthDate = info.getValue();
-        return (
-          <div className="text-sm text-gray-900">
-            {birthDate ? new Date(birthDate).toLocaleDateString() : "-"}
-          </div>
-        );
+        const value = info.getValue<string | null | undefined>();
+        return <div className="text-sm text-gray-900">{value ?? "-"}</div>;
       },
-    }),
-    columnHelper.accessor("source", {
-      header: t("clients.columns.source"),
-      cell: (info) => (
-        <span
-          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-            info.getValue() === "manual"
-              ? "bg-gray-100 text-gray-800"
-              : "bg-green-100 text-green-800"
-          }`}
-        >
-          {info.getValue() === "manual"
+    },
+
+    // Birth date
+    createDateColumn<Client>("birthDate", t("clients.columns.birthDate")),
+
+    // Source
+    createBadgeColumn<Client, "manual" | "smart-link">(
+      "source",
+      t("clients.columns.source"),
+      {
+        getBadgeColor: (value) =>
+          value === "manual"
+            ? "bg-gray-100 text-gray-800"
+            : "bg-green-100 text-green-800",
+        getLabel: (value) =>
+          value === "manual"
             ? t("clients.source.manual")
-            : t("clients.source.smartLink")}
-        </span>
-      ),
+            : t("clients.source.smartLink"),
+      }
+    ),
+
+    // Created date
+    createDateColumn<Client>("createdAt", t("clients.columns.created")),
+
+    // Updated date
+    createDateColumn<Client>("updatedAt", t("clients.columns.updated")),
+
+    // Document count
+    createCountColumn<Client>("documents", t("clients.columns.documents")),
+
+    // Notes count
+    createCountColumn<Client>("notes", t("clients.columns.notes")),
+
+    // Interactions count
+    createCountColumn<Client>(
+      "interactions",
+      t("clients.columns.interactions")
+    ),
+
+    // Actions column with self-contained delete functionality
+    createActionsColumn<Client>({
+      t: (key: string, options?: Record<string, unknown>) =>
+        t(key, options as Record<string, string | number | Date> | undefined),
+      onEditItem: onEditClient,
+      useDeleteHook: useDeleteClient, // This hook is directly used by the column
+      isMutating,
+      translationPrefix: "clients",
     }),
-    columnHelper.accessor("createdAt", {
-      header: t("clients.columns.created"),
-      cell: (info) => new Date(info.getValue()).toLocaleDateString(),
-    }),
-    columnHelper.accessor("updatedAt", {
-      header: t("clients.columns.updated"),
-      cell: (info) => new Date(info.getValue()).toLocaleDateString(),
-    }),
-    columnHelper.accessor("documents", {
-      header: t("clients.columns.documents"),
-      cell: (info) => info.getValue().length,
-    }),
-    columnHelper.accessor("notes", {
-      header: t("clients.columns.notes"),
-      cell: (info) => info.getValue().length,
-    }),
-    columnHelper.accessor("interactions", {
-      header: t("clients.columns.interactions"),
-      cell: (info) => info.getValue().length,
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "",
-      cell: (info) => (
-        <div className="text-right" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900"
-              >
-                <span className="sr-only">{t("common.options")}</span>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => onEditClient(info.row.original)}
-                disabled={info.row.original.isOptimistic}
-                className="flex items-center cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                <span>{t("common.edit")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDeleteClient(info.row.original.id)}
-                disabled={isMutating || info.row.original.isOptimistic}
-                variant="destructive"
-                className="flex items-center cursor-pointer"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                <span>
-                  {info.row.original.optimisticOperation === "delete"
-                    ? t("clients.deleting")
-                    : isMutating
-                      ? t("clients.deleting")
-                      : t("common.delete")}
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
-    }),
-  ] as ColumnDef<OptimisticClient>[];
+  ];
+
+  return columns;
 }

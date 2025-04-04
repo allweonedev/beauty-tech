@@ -1,0 +1,543 @@
+import React, { useState } from "react";
+import { useTranslations } from "next-intl";
+import { type UseMutationResult } from "@tanstack/react-query";
+import {
+  Search,
+  Plus,
+  Filter,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  type SortingState,
+  getFilteredRowModel,
+  type RowSelectionState,
+  getPaginationRowModel,
+  type PaginationState,
+  type ColumnDef,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BulkDeleteButton } from "@/components/ui/bulk-delete-button";
+
+// Base entity interface that all data types should extend
+export interface BaseEntity {
+  id: string;
+  isOptimistic?: boolean;
+  optimisticOperation?: "create" | "update" | "delete";
+}
+
+// Filter option type
+export interface FilterOption<T extends string = string> {
+  value: T;
+  label: string;
+}
+
+// DataTable props
+export interface DataTableProps<
+  TData extends BaseEntity,
+  TFilterValue extends string = string,
+> {
+  // Data
+  data: TData[];
+  columns: ColumnDef<TData>[];
+
+  // Callbacks
+  onNewItem?: () => void;
+  onEditItem?: (item: TData) => void;
+  useBulkDeleteHook?: () => UseMutationResult<
+    unknown,
+    Error,
+    string[],
+    unknown
+  >;
+
+  // State flags
+  isLoading?: boolean;
+  isMutating?: boolean;
+
+  // Infinite loading props
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+
+  // Pagination props
+  onPageSizeChange?: (size: number) => void;
+  currentPageSize?: number;
+
+  // Translations
+  translationPrefix?: string;
+
+  // Search and filter
+  searchPlaceholder?: string;
+  disableSearch?: boolean;
+  searchKeys?: (keyof TData)[];
+  filterOptions?: FilterOption<TFilterValue>[];
+  defaultFilterValue?: TFilterValue;
+  onFilterChange?: (value: TFilterValue) => void;
+  customFilterFn?: (item: TData, filterValue: TFilterValue) => boolean;
+
+  // UI customization
+  newItemLabel?: string;
+  title?: string;
+  emptyStateMessage?: string;
+  filteredEmptyStateMessage?: string;
+  noSearchResultsMessage?: string;
+  rowClassName?: (row: TData) => string;
+}
+
+export function DataTable<
+  TData extends BaseEntity,
+  TFilterValue extends string = string,
+>({
+  // Data
+  data,
+  columns,
+
+  // Callbacks
+  onNewItem,
+  onEditItem,
+  useBulkDeleteHook,
+
+  // State flags
+  isLoading = false,
+  isMutating = false,
+
+  // Infinite loading props
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
+
+  // Pagination props
+  onPageSizeChange,
+  currentPageSize,
+
+  // Translations
+  translationPrefix = "common.table",
+
+  // Search and filter
+  searchPlaceholder,
+  disableSearch = false,
+  searchKeys,
+  filterOptions,
+  defaultFilterValue,
+  onFilterChange,
+  customFilterFn,
+
+  // UI customization
+  newItemLabel,
+  title,
+  emptyStateMessage,
+  filteredEmptyStateMessage,
+  noSearchResultsMessage,
+  rowClassName,
+}: DataTableProps<TData, TFilterValue>) {
+  const t = useTranslations();
+
+  // State
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterValue, setFilterValue] = useState<TFilterValue | "all">(
+    defaultFilterValue ?? ("all" as TFilterValue | "all")
+  );
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: currentPageSize ?? 10,
+  });
+
+  // Filter data based on search query and selected filter
+  const filteredData = React.useMemo(() => {
+    return data.filter((item) => {
+      // Search filtering
+      const matchesSearch =
+        !searchQuery ||
+        !searchKeys ||
+        searchKeys.some((key) => {
+          const value = item[key];
+          if (typeof value === "string") {
+            return value.toLowerCase().includes(searchQuery.toLowerCase());
+          } else if (typeof value === "number") {
+            return value.toString().includes(searchQuery);
+          }
+          return false;
+        });
+
+      // Filter dropdown filtering
+      let matchesFilter = true;
+
+      if (filterValue !== "all" && filterOptions && filterOptions.length > 0) {
+        if (customFilterFn) {
+          matchesFilter = customFilterFn(item, filterValue);
+        } else {
+          // Default fallback if no custom filter provided
+          matchesFilter = false;
+        }
+      }
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [
+    data,
+    searchQuery,
+    filterValue,
+    searchKeys,
+    customFilterFn,
+    filterOptions,
+  ]);
+
+  // Get selected item IDs
+  const selectedItemIds = Object.keys(rowSelection)
+    .map((index) => {
+      const idx = parseInt(index);
+      return idx < filteredData.length ? filteredData[idx].id : null;
+    })
+    .filter((id): id is string => id !== null);
+
+  // Initialize React Table
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      sorting,
+      rowSelection,
+      pagination,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: false,
+    pageCount: Math.ceil(filteredData.length / pagination.pageSize),
+  });
+
+  // Get optimistic status style
+  const getRowStyles = (row: TData): string => {
+    if (!row.isOptimistic) return rowClassName ? rowClassName(row) : "";
+
+    switch (row.optimisticOperation) {
+      case "create":
+        return `bg-green-50 border-l-4 border-green-400 ${rowClassName ? rowClassName(row) : ""}`;
+      case "update":
+        return `bg-blue-50 border-l-4 border-blue-400 ${rowClassName ? rowClassName(row) : ""}`;
+      case "delete":
+        return `bg-red-50 border-l-4 border-red-400 opacity-60 line-through ${rowClassName ? rowClassName(row) : ""}`;
+      default:
+        return `bg-gray-50 ${rowClassName ? rowClassName(row) : ""}`;
+    }
+  };
+
+  // Clear row selection helper
+  const clearRowSelection = () => setRowSelection({});
+
+  // Render the table
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <h2 className="text-xl font-semibold text-gray-800">
+            {title ?? t(`${translationPrefix}.title`)}
+          </h2>
+          <div className="flex gap-2">
+            {/* Use BulkDeleteButton component if hook is provided */}
+            {useBulkDeleteHook && (
+              <BulkDeleteButton
+                ids={selectedItemIds}
+                useBulkDeleteHook={useBulkDeleteHook}
+                translationPrefix={translationPrefix}
+                onClearSelection={clearRowSelection}
+              />
+            )}
+
+            {onNewItem && (
+              <Button
+                onClick={onNewItem}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={isMutating}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {newItemLabel ?? t(`${translationPrefix}.newItem`)}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+          {!disableSearch && (
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder={searchPlaceholder ?? t("common.search")}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
+
+          {filterOptions && filterOptions.length > 0 && (
+            <Select
+              value={filterValue as string}
+              onValueChange={(value) => {
+                const newValue = value as TFilterValue | "all";
+                setFilterValue(newValue);
+                if (onFilterChange && value !== "all") {
+                  onFilterChange(value as TFilterValue);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-48">
+                <div className="flex items-center">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue
+                    placeholder={t(`${translationPrefix}.filter.all`)}
+                  />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t(`${translationPrefix}.filter.all`)}
+                </SelectItem>
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      className={`${
+                        header.id === "select" ? "w-[40px]" : ""
+                      } cursor-pointer`}
+                    >
+                      <div className="flex items-center">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {header.column.getCanSort() &&
+                          header.id !== "select" && (
+                            <span className="ml-1">
+                              {header.column.getIsSorted() === "asc" ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : header.column.getIsSorted() === "desc" ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                              )}
+                            </span>
+                          )}
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map((row) => {
+                  const isBeingDeleted =
+                    row.original.optimisticOperation === "delete";
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className={`hover:bg-gray-50 cursor-pointer ${getRowStyles(
+                        row.original
+                      )}`}
+                      onClick={() =>
+                        !row.original.isOptimistic &&
+                        onEditItem &&
+                        onEditItem(row.original)
+                      }
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                          {isBeingDeleted && cell.column.id === "name" && (
+                            <span className="ml-2 text-xs text-red-500 font-medium">
+                              ({t(`${translationPrefix}.deleting`)})
+                            </span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-gray-500"
+                  >
+                    {searchQuery
+                      ? (noSearchResultsMessage ??
+                        t(`${translationPrefix}.noItemsFound`))
+                      : filterValue !== "all"
+                        ? (filteredEmptyStateMessage ??
+                          t(`${translationPrefix}.noItemsFound`))
+                        : (emptyStateMessage ??
+                          t(`${translationPrefix}.noItemsAvailable`))}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Pagination and page size controls */}
+      {filteredData.length > 0 && (
+        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 p-4">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-gray-700">
+              {t(`${translationPrefix}.pagination.itemsPerPage`)}
+            </p>
+            <Select
+              value={`${currentPageSize ?? pagination.pageSize}`}
+              onValueChange={(value) => {
+                const newSize = Number(value);
+                // Update local pagination state
+                setPagination((prev) => ({
+                  ...prev,
+                  pageSize: newSize,
+                }));
+                // Call the parent handler for global state
+                if (onPageSizeChange) {
+                  onPageSizeChange(newSize);
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue
+                  placeholder={currentPageSize ?? pagination.pageSize}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center">
+            {/* Load more button for infinite loading */}
+            {onLoadMore && hasMore && (
+              <Button
+                onClick={onLoadMore}
+                disabled={isLoadingMore ?? !hasMore}
+                className="ml-2"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    {t(`${translationPrefix}.loading`)}
+                  </>
+                ) : (
+                  t(`${translationPrefix}.loadMore`)
+                )}
+              </Button>
+            )}
+
+            {/* Traditional pagination buttons (shown only if infinite loading is not used) */}
+            {!onLoadMore && (
+              <div className="flex items-center space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="mx-2 text-sm text-gray-700">
+                  {t(`${translationPrefix}.pagination.showing`)}{" "}
+                  {table.getState().pagination.pageIndex + 1}{" "}
+                  {t(`${translationPrefix}.pagination.of`)}{" "}
+                  {table.getPageCount() || 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
