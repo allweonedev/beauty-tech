@@ -3,7 +3,7 @@ import { DataTable } from "@/components/helper/data-table";
 import { getProductColumns } from "./ProductColumns";
 import type { Product } from "@/types/product";
 import { useTranslations } from "next-intl";
-import { useBulkDeleteProducts } from "@/hooks/useProducts";
+import { useBulkDeleteProducts, useProductSearch } from "@/hooks/useProducts";
 
 interface ProductsTableProps {
   products: Product[];
@@ -18,6 +18,10 @@ interface ProductsTableProps {
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
+  // Server-side pagination props
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  currentPage?: number;
 }
 
 export default function ProductsTable({
@@ -31,6 +35,9 @@ export default function ProductsTable({
   isLoadingMore,
   onPageSizeChange,
   currentPageSize,
+  totalCount,
+  onPageChange,
+  currentPage,
 }: ProductsTableProps) {
   const t = useTranslations();
 
@@ -80,11 +87,18 @@ export default function ProductsTable({
         { value: "service", label: t("products.filter.service") },
       ]}
       customFilterFn={typeFilterFn}
+      // Server-side search
+      useServerSearch={useProductSearch}
+      serverSearchDebounce={300}
       // Customization
       title={t("products.title")}
       newItemLabel={t("products.newProduct")}
       emptyStateMessage={t("products.noProductsRegistered")}
       filteredEmptyStateMessage={t("products.noProductsFound")}
+      // Server-side pagination
+      totalCount={totalCount}
+      onPageChange={onPageChange}
+      currentPage={currentPage}
     />
   );
 }

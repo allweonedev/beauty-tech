@@ -44,10 +44,10 @@ export function useClients() {
 }
 
 // Hook for getting paginated clients
-export function usePaginatedClients(pageSize = 10) {
+export function usePaginatedClients(pageSize = 10, page = 0) {
   return useInfiniteQuery({
-    queryKey: [...clientsQueryKey, "paginated"],
-    initialPageParam: 0,
+    queryKey: [...clientsQueryKey, "paginated", pageSize, page],
+    initialPageParam: page,
     queryFn: async ({ pageParam }) => {
       const response = await api.get("/api/clients", {
         query: {
@@ -56,20 +56,44 @@ export function usePaginatedClients(pageSize = 10) {
         },
       });
 
-      // Parse response to an array of clients
+      // Handle the new response format
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "data" in response &&
+        "meta" in response
+      ) {
+        const clients = Array.isArray(response.data) ? response.data : [];
+        const totalCount = response.meta?.totalCount ?? 0;
+
+        // If we've fetched all items, there are no more pages
+        const hasNextPage = (Number(pageParam) + 1) * pageSize < totalCount;
+
+        return {
+          data: clients,
+          nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+          previousPage:
+            Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
+          hasNextPage,
+          totalCount,
+        };
+      }
+
+      // Fallback for old API format or error
       const clients = Array.isArray(response) ? response : [];
-
-      // If we receive fewer items than the page size, we know there are no more pages
-      const hasNextPage = clients.length === pageSize;
-
       return {
         data: clients,
-        nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+        nextPage:
+          clients.length === pageSize ? Number(pageParam) + 1 : undefined,
         previousPage: Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
-        hasNextPage,
+        hasNextPage: clients.length === pageSize,
+        totalCount: 0, // Unknown total count in this case
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -434,5 +458,25 @@ export function useBulkDeleteClients() {
         queryKey: [...clientsQueryKey, "paginated"],
       });
     },
+  });
+}
+
+// Hook for searching clients
+export function useClientSearch(searchTerm: string) {
+  return useQuery({
+    queryKey: ["clientSearch", searchTerm],
+    queryFn: async () => {
+      if (!searchTerm.trim()) return [] as Client[];
+      try {
+        const response = await api.get("/api/clients/search", {
+          query: { q: searchTerm },
+        });
+        return (Array.isArray(response) ? response : []) as Client[];
+      } catch (error) {
+        console.error("Error searching clients:", error);
+        return [] as Client[];
+      }
+    },
+    enabled: searchTerm.trim().length > 0,
   });
 }

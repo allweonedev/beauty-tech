@@ -45,7 +45,7 @@ const clientSchema = z.object({
   source: z.enum(["manual", "smart-link"]).default("manual"),
 });
 
-// GET - Fetch all clients
+// GET - Fetch all clients with pagination
 export async function GET(request: NextRequest) {
   try {
     // Extract pagination parameters from the URL
@@ -56,21 +56,31 @@ export async function GET(request: NextRequest) {
     // Calculate skip for pagination
     const skip = page * limit;
 
+    // Get total count
+    const totalCount = await db.client.count();
+
     // Fetch clients with pagination
     const clients = await db.client.findMany({
       skip,
       take: limit,
-      include: {
-        documents: true,
-        notes: true,
-        interactions: true,
-      },
       orderBy: {
         createdAt: "desc",
       },
+      include: {
+        interactions: true,
+        notes: true,
+        documents: true,
+      },
     });
 
-    return NextResponse.json(clients);
+    return NextResponse.json({
+      data: clients,
+      meta: {
+        totalCount,
+        page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Error fetching clients:", error);
     return NextResponse.json(

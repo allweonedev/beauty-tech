@@ -134,8 +134,17 @@
     "confirmDeleteDescription": "You are about to delete {count, number} service order(s). This action cannot be undone.",
     "loading": "Loading...",
     "noResults": "No service orders found.",
+    "noServiceOrdersRegistered": "No service orders registered. Click on 'New Service Order' to get started.",
+    "noServiceOrdersFound": "No service orders found for this search.",
     "filterStatus": "Filter by Status",
     "sync": "Syncing with server...",
+    "filter": {
+      "all": "All Status",
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
     "status": {
       "pending": "Pending",
       "inProgress": "In Progress",
@@ -286,7 +295,20 @@
     "rowsSelected": "{count, number} selected",
     "loading": "Loading...",
     "select": "Select row",
-    "selectAll": "Select all"
+    "selectAll": "Select all",
+    "searchClients": "Search clients...",
+    "noClientsFound": "No clients found",
+    "selectClient": "Select a client",
+    "searchProducts": "Search products...",
+    "noProductsFound": "No products found",
+    "selectProduct": "Select a product",
+    "noResultsFound": "No results found",
+    "errorLoadingData": "Error loading data",
+    "table": {
+      "filter": {
+        "all": "All"
+      }
+    }
   },
   "auth": {
     "signIn": {

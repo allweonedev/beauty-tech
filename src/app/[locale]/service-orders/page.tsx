@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import ServiceOrdersTable from "@/components/service-order/ServiceOrdersTable";
@@ -12,11 +12,7 @@ import {
   useDeleteServiceOrder,
   useBulkDeleteServiceOrders,
 } from "@/hooks/useServiceOrders";
-import { useClients } from "@/hooks/useClients";
-import { useProducts } from "@/hooks/useProducts";
 import type { ServiceOrder } from "@/components/service-order/ServiceOrderModal";
-import type { Client } from "@/types";
-import type { Product } from "@/types";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function ServiceOrdersPage() {
@@ -28,10 +24,9 @@ export default function ServiceOrdersPage() {
   >();
   const { toast } = useToast();
 
-  // Fetch service orders, clients, and products data
+  // Fetch service orders
   const { data: serviceOrders = [], isLoading } = useServiceOrders();
-  const { data: clients = [] } = useClients();
-  const { data: products = [] } = useProducts();
+  // Remove client and product data fetching since the selects will handle it
 
   // Mutations
   const createServiceOrder = useCreateServiceOrder();
@@ -136,15 +131,15 @@ export default function ServiceOrdersPage() {
       {showServiceOrderModal && (
         <ServiceOrderModal
           serviceOrder={selectedServiceOrder}
-          clients={clients as unknown as Client[]}
-          products={products as unknown as Product[]}
-          open={showServiceOrderModal}
-          isMutating={isMutating}
           onClose={() => {
             setShowServiceOrderModal(false);
             setSelectedServiceOrder(undefined);
           }}
           onSave={handleSaveServiceOrder}
+          open={showServiceOrderModal}
+          isMutating={
+            createServiceOrder.isPending || updateServiceOrder.isPending
+          }
         />
       )}
     </div>

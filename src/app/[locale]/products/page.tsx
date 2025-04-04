@@ -17,15 +17,13 @@ export default function ProductsPage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
   const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Product data hooks
-  const {
-    data: productsData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = usePaginatedProducts(pageSize);
+  const { data: productsData, isLoading } = usePaginatedProducts(
+    pageSize,
+    currentPage
+  );
   const { mutateAsync: createProduct, isPending: isCreating } =
     useCreateProduct();
   const { mutateAsync: updateProduct, isPending: isUpdating } =
@@ -34,6 +32,12 @@ export default function ProductsPage() {
   const products = React.useMemo(() => {
     if (!productsData) return [];
     return productsData.pages.flatMap((page) => page.data);
+  }, [productsData]);
+
+  // Get the total count from the latest page
+  const totalCount = React.useMemo(() => {
+    if (!productsData?.pages || productsData.pages.length === 0) return 0;
+    return productsData.pages[0].totalCount;
   }, [productsData]);
 
   // Flag for any loading state
@@ -89,11 +93,11 @@ export default function ProductsPage() {
           }}
           isLoading={isLoading}
           isMutating={isMutating}
-          onLoadMore={() => fetchNextPage()}
-          hasMore={!!hasNextPage}
-          isLoadingMore={isFetchingNextPage}
           onPageSizeChange={setPageSize}
           currentPageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => setCurrentPage(page)}
+          currentPage={currentPage}
         />
       </main>
 

@@ -6,7 +6,7 @@ import { ClientsList } from "@/components/client/ClientsTable";
 import { ClientModal } from "@/components/client/ClientModal";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  useClients,
+  usePaginatedClients,
   useCreateClient,
   useUpdateClient,
   useDeleteClient,
@@ -21,9 +21,26 @@ export default function ClientsPage() {
   const [showClientModal, setShowClientModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const { toast } = useToast();
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Fetch clients data
-  const { data: clients = [], isLoading } = useClients();
+  const { data: clientsData, isLoading } = usePaginatedClients(
+    pageSize,
+    currentPage
+  );
+
+  // Generate flat list of clients from paginated data
+  const clients = React.useMemo(() => {
+    if (!clientsData) return [];
+    return clientsData.pages.flatMap((page) => page.data as Client[]);
+  }, [clientsData]);
+
+  // Get the total count from the latest page
+  const totalCount = React.useMemo(() => {
+    if (!clientsData?.pages || clientsData.pages.length === 0) return 0;
+    return clientsData.pages[0].totalCount;
+  }, [clientsData]);
 
   // Mutations
   const createClient = useCreateClient();
@@ -111,7 +128,7 @@ export default function ClientsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ClientsList
-          clients={clients as Client[]}
+          clients={clients}
           isLoading={isLoading}
           isMutating={isMutating}
           onNewClient={() => {
@@ -122,6 +139,11 @@ export default function ClientsPage() {
             setSelectedClient(client);
             setShowClientModal(true);
           }}
+          onPageSizeChange={setPageSize}
+          currentPageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => setCurrentPage(page)}
+          currentPage={currentPage}
         />
       </main>
 

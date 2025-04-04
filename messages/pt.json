@@ -134,8 +134,17 @@
     "confirmDeleteDescription": "Você está prestes a excluir {count, number} ordem(ns) de serviço. Esta ação não pode ser desfeita.",
     "loading": "Carregando...",
     "noResults": "Nenhuma ordem de serviço encontrada.",
+    "noServiceOrdersRegistered": "Nenhuma ordem de serviço cadastrada. Clique em 'Nova Ordem de Serviço' para começar.",
+    "noServiceOrdersFound": "Nenhuma ordem de serviço encontrada para esta busca.",
     "filterStatus": "Filtrar por Status",
     "sync": "Sincronizando com o servidor...",
+    "filter": {
+      "all": "Todos os Status",
+      "pending": "Pendente",
+      "inProgress": "Em Andamento",
+      "completed": "Concluída",
+      "cancelled": "Cancelada"
+    },
     "status": {
       "pending": "Pendente",
       "inProgress": "Em Andamento",
@@ -286,7 +295,20 @@
     "rowsSelected": "{count, number} selecionados",
     "loading": "Carregando...",
     "select": "Selecionar linha",
-    "selectAll": "Selecionar todos"
+    "selectAll": "Selecionar todos",
+    "searchClients": "Buscar clientes...",
+    "noClientsFound": "Nenhum cliente encontrado",
+    "selectClient": "Selecione um cliente",
+    "searchProducts": "Buscar produtos...",
+    "noProductsFound": "Nenhum produto encontrado",
+    "selectProduct": "Selecione um produto",
+    "noResultsFound": "Nenhum resultado encontrado",
+    "errorLoadingData": "Erro ao carregar dados",
+    "table": {
+      "filter": {
+        "all": "Todos"
+      }
+    }
   },
   "auth": {
     "signIn": {

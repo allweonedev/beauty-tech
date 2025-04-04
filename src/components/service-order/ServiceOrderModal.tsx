@@ -33,6 +33,10 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useUploadThing } from "@/hooks/useUploadthing";
 import { useToast } from "@/components/ui/use-toast";
+import { ClientSelect } from "@/components/selects/ClientSelect";
+import { ProductSelect } from "@/components/selects/ProductSelect";
+import { useClients } from "@/hooks/useClients";
+import { useProducts } from "@/hooks/useProducts";
 
 export interface ServiceOrder {
   id: string;
@@ -89,8 +93,6 @@ type ServiceOrderFormValues = z.infer<typeof serviceOrderFormSchema>;
 
 interface ServiceOrderModalProps {
   serviceOrder?: ServiceOrder;
-  clients: Client[];
-  products: Product[];
   onClose: () => void;
   onSave: (serviceOrder: Partial<ServiceOrder>) => void;
   open: boolean;
@@ -99,8 +101,6 @@ interface ServiceOrderModalProps {
 
 export function ServiceOrderModal({
   serviceOrder,
-  clients,
-  products,
   onClose,
   onSave,
   open,
@@ -202,6 +202,10 @@ export function ServiceOrderModal({
     }
   );
 
+  // Add these hooks at the component level
+  const { data: allClients = [] } = useClients();
+  const { data: allProducts = [] } = useProducts();
+
   // Form submission handler
   const onSubmit = async (data: ServiceOrderFormValues) => {
     setError(null);
@@ -216,9 +220,9 @@ export function ServiceOrderModal({
         return;
       }
 
-      const client = clients.find((c) => c.id === data.clientId);
+      const client = allClients.find((c) => c.id === data.clientId);
       const product = data.productId
-        ? products.find((p) => p.id === data.productId)
+        ? allProducts.find((p) => p.id === data.productId)
         : undefined;
 
       if (!client) {
@@ -231,9 +235,10 @@ export function ServiceOrderModal({
           ? new Date(`${data.scheduledDate}T${data.scheduledTime}`)
           : undefined;
 
+      // Use the client and product data but cast them to the expected types
       const serviceOrderData: Partial<ServiceOrder> = {
-        client,
-        product,
+        client: client as unknown as Client,
+        product: product as unknown as Product | undefined,
         status: data.status,
         description: data.description,
         technicalNotes: data.technicalNotes ?? "",
@@ -257,9 +262,9 @@ export function ServiceOrderModal({
       // Upload completed, now submit the form with the updated attachments
       const data = form.getValues();
 
-      const client = clients.find((c) => c.id === data.clientId);
+      const client = allClients.find((c) => c.id === data.clientId);
       const product = data.productId
-        ? products.find((p) => p.id === data.productId)
+        ? allProducts.find((p) => p.id === data.productId)
         : undefined;
 
       if (!client) {
@@ -272,9 +277,10 @@ export function ServiceOrderModal({
           ? new Date(`${data.scheduledDate}T${data.scheduledTime}`)
           : undefined;
 
+      // Use the client and product data but cast them to the expected types
       const serviceOrderData: Partial<ServiceOrder> = {
-        client,
-        product,
+        client: client as unknown as Client,
+        product: product as unknown as Product | undefined,
         status: data.status,
         description: data.description,
         technicalNotes: data.technicalNotes ?? "",
@@ -291,8 +297,8 @@ export function ServiceOrderModal({
     isUploading,
     uploadingInProgress,
     form,
-    clients,
-    products,
+    allClients,
+    allProducts,
     attachments,
     maintenanceHistory,
     t,
@@ -381,27 +387,13 @@ export function ServiceOrderModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("serviceOrders.form.client")}</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t(
-                              "serviceOrders.form.clientPlaceholder"
-                            )}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ClientSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={t("serviceOrders.form.clientPlaceholder")}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -413,27 +405,13 @@ export function ServiceOrderModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("serviceOrders.form.product")}</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t(
-                              "serviceOrders.form.productPlaceholder"
-                            )}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ProductSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={t("serviceOrders.form.productPlaceholder")}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

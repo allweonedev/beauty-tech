@@ -65,10 +65,10 @@ export function useProducts() {
 }
 
 // Hook for getting paginated products
-export function usePaginatedProducts(pageSize = 10) {
+export function usePaginatedProducts(pageSize = 10, page = 0) {
   return useInfiniteQuery({
-    queryKey: [...productsQueryKey, "paginated"],
-    initialPageParam: 0,
+    queryKey: [...productsQueryKey, "paginated", pageSize, page],
+    initialPageParam: page,
     queryFn: async ({ pageParam }) => {
       const response = await api.get("/api/products", {
         query: {
@@ -77,22 +77,48 @@ export function usePaginatedProducts(pageSize = 10) {
         },
       });
 
-      // Parse response to an array of products
+      // Handle the new response format
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "data" in response &&
+        "meta" in response
+      ) {
+        const products = Array.isArray(response.data)
+          ? response.data.map(mapDBProductToProduct)
+          : [];
+        const totalCount = response.meta?.totalCount ?? 0;
+
+        // If we've fetched all items, there are no more pages
+        const hasNextPage = (Number(pageParam) + 1) * pageSize < totalCount;
+
+        return {
+          data: products,
+          nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+          previousPage:
+            Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
+          hasNextPage,
+          totalCount,
+        };
+      }
+
+      // Fallback for old API format or error
       const products = Array.isArray(response)
         ? response.map(mapDBProductToProduct)
         : [];
-
-      // If we receive fewer items than the page size, we know there are no more pages
-      const hasNextPage = products.length === pageSize;
-
       return {
         data: products,
-        nextPage: hasNextPage ? Number(pageParam) + 1 : undefined,
+        nextPage:
+          products.length === pageSize ? Number(pageParam) + 1 : undefined,
         previousPage: Number(pageParam) > 0 ? Number(pageParam) - 1 : undefined,
-        hasNextPage,
+        hasNextPage: products.length === pageSize,
+        totalCount: 0, // Unknown total count in this case
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -466,5 +492,28 @@ export function useBulkDeleteProducts() {
         queryKey: [...productsQueryKey, "paginated"],
       });
     },
+  });
+}
+
+// Hook for searching products
+export function useProductSearch(searchTerm: string) {
+  return useQuery({
+    queryKey: ["productSearch", searchTerm],
+    queryFn: async () => {
+      if (!searchTerm.trim()) return [] as Product[];
+      try {
+        const response = await api.get("/api/products/search", {
+          query: { q: searchTerm },
+        });
+        // Map database products to our product type to handle the Decimal price conversion
+        return Array.isArray(response)
+          ? response.map(mapDBProductToProduct)
+          : [];
+      } catch (error) {
+        console.error("Error searching products:", error);
+        return [] as Product[];
+      }
+    },
+    enabled: searchTerm.trim().length > 0,
   });
 }

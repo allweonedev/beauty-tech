@@ -3,7 +3,7 @@ import { DataTable } from "@/components/helper/data-table";
 import { getClientColumns } from "./ClientColumns";
 import type { Client } from "@/types/client";
 import { useTranslations } from "next-intl";
-import { useBulkDeleteClients } from "@/hooks/useClients";
+import { useBulkDeleteClients, useClientSearch } from "@/hooks/useClients";
 
 interface ClientsListProps {
   clients: Client[];
@@ -18,6 +18,10 @@ interface ClientsListProps {
   // Page size change props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
+  // Server-side pagination props
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  currentPage?: number;
 }
 
 export function ClientsList({
@@ -31,6 +35,9 @@ export function ClientsList({
   isLoadingMore,
   onPageSizeChange,
   currentPageSize,
+  totalCount,
+  onPageChange,
+  currentPage,
 }: ClientsListProps) {
   const t = useTranslations();
 
@@ -80,11 +87,18 @@ export function ClientsList({
         { value: "smart-link", label: t("clients.filter.smartLink") },
       ]}
       customFilterFn={sourceFilterFn}
+      // Server-side search
+      useServerSearch={useClientSearch}
+      serverSearchDebounce={300}
       // Customization
       title={t("clients.title")}
       newItemLabel={t("clients.newClient")}
       emptyStateMessage={t("clients.noClientsRegistered")}
       filteredEmptyStateMessage={t("clients.noClientsFound")}
+      // Server-side pagination
+      totalCount={totalCount}
+      onPageChange={onPageChange}
+      currentPage={currentPage}
     />
   );
 }

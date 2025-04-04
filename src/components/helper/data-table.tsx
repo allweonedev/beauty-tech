@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { type UseMutationResult } from "@tanstack/react-query";
+import {
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   Search,
   Plus,
@@ -88,6 +91,9 @@ export interface DataTableProps<
   // Pagination props
   onPageSizeChange?: (size: number) => void;
   currentPageSize?: number;
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  currentPage?: number;
 
   // Translations
   translationPrefix?: string;
@@ -100,6 +106,10 @@ export interface DataTableProps<
   defaultFilterValue?: TFilterValue;
   onFilterChange?: (value: TFilterValue) => void;
   customFilterFn?: (item: TData, filterValue: TFilterValue) => boolean;
+
+  // Server-side search
+  useServerSearch?: (searchTerm: string) => UseQueryResult<TData[], unknown>;
+  serverSearchDebounce?: number;
 
   // UI customization
   newItemLabel?: string;
@@ -128,13 +138,14 @@ export function DataTable<
   isMutating = false,
 
   // Infinite loading props
-  onLoadMore,
   hasMore,
-  isLoadingMore,
 
   // Pagination props
   onPageSizeChange,
   currentPageSize,
+  totalCount,
+  onPageChange,
+  currentPage,
 
   // Translations
   translationPrefix = "common.table",
@@ -148,6 +159,10 @@ export function DataTable<
   onFilterChange,
   customFilterFn,
 
+  // Server-side search
+  useServerSearch,
+  serverSearchDebounce = 300,
+
   // UI customization
   newItemLabel,
   title,
@@ -160,6 +175,7 @@ export function DataTable<
 
   // State
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [filterValue, setFilterValue] = useState<TFilterValue | "all">(
     defaultFilterValue ?? ("all" as TFilterValue | "all")
   );
@@ -168,18 +184,87 @@ export function DataTable<
 
   // Pagination state
   const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
+    pageIndex: currentPage ?? 0,
     pageSize: currentPageSize ?? 10,
   });
 
+  // Update pagination when currentPageSize or currentPage prop changes
+  useEffect(() => {
+    if (
+      (currentPageSize && currentPageSize !== pagination.pageSize) ??
+      (currentPage !== undefined && currentPage !== pagination.pageIndex)
+    ) {
+      setPagination((prev) => ({
+        pageIndex: currentPage ?? prev.pageIndex,
+        pageSize: currentPageSize ?? prev.pageSize,
+      }));
+    }
+  }, [currentPageSize, pagination.pageSize, currentPage, pagination.pageIndex]);
+
+  // Debounce search query for server-side search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, serverSearchDebounce);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, serverSearchDebounce]);
+
+  // Get server-side search results if hook is provided
+  const serverSearchQuery =
+    useServerSearch && debouncedSearchQuery.trim() ? debouncedSearchQuery : "";
+  const serverSearchResults = useServerSearch?.(serverSearchQuery) ?? {
+    data: undefined,
+    isLoading: false,
+  };
+
+  // Combine local data with server search results
+  const combinedData = React.useMemo(() => {
+    // If no server search or no search query, use the local data
+    if (!useServerSearch) {
+      return data;
+    }
+
+    if (!debouncedSearchQuery.trim()) {
+      return data;
+    }
+
+    // If server search is loading, keep showing existing data
+    if (serverSearchResults.isLoading) {
+      return data;
+    }
+
+    if (serverSearchResults.data) {
+      // Create a Set of existing IDs to avoid duplicates
+      const existingIds = new Set(data.map((item) => item.id));
+      // Filter out server results that are already in local data to avoid duplicates
+      const uniqueServerResults = serverSearchResults.data.filter(
+        (item) => !existingIds.has(item.id)
+      );
+
+      // Combine local data with unique server results
+      return [...data, ...uniqueServerResults];
+    }
+
+    return data;
+  }, [
+    data,
+    debouncedSearchQuery,
+    serverSearchResults.data,
+    serverSearchResults.isLoading,
+    useServerSearch,
+  ]);
+
   // Filter data based on search query and selected filter
   const filteredData = React.useMemo(() => {
-    return data.filter((item) => {
-      // Search filtering
+    return combinedData.filter((item) => {
+      // Search filtering - if server search is active, we don't need client-side filtering
       const matchesSearch =
         !searchQuery ||
-        !searchKeys ||
-        searchKeys.some((key) => {
+        (useServerSearch ?? !searchKeys) ||
+        searchKeys?.some((key) => {
           const value = item[key];
           if (typeof value === "string") {
             return value.toLowerCase().includes(searchQuery.toLowerCase());
@@ -204,12 +289,13 @@ export function DataTable<
       return matchesSearch && matchesFilter;
     });
   }, [
-    data,
+    combinedData,
     searchQuery,
     filterValue,
     searchKeys,
     customFilterFn,
     filterOptions,
+    useServerSearch,
   ]);
 
   // Get selected item IDs
@@ -219,6 +305,9 @@ export function DataTable<
       return idx < filteredData.length ? filteredData[idx].id : null;
     })
     .filter((id): id is string => id !== null);
+
+  // Clear row selection helper
+  const clearRowSelection = () => setRowSelection({});
 
   // Initialize React Table
   const table = useReactTable({
@@ -237,9 +326,22 @@ export function DataTable<
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: false,
-    pageCount: Math.ceil(filteredData.length / pagination.pageSize),
+    manualPagination: !!totalCount,
+    pageCount: Math.ceil(
+      (totalCount ?? filteredData.length) / pagination.pageSize
+    ),
   });
+
+  // Calculate total pages for server-side pagination
+  const totalPages = totalCount
+    ? Math.ceil(totalCount / pagination.pageSize)
+    : table.getPageCount();
+
+  // Determine if we can navigate to next/previous pages
+  const canPreviousPage = pagination.pageIndex > 0;
+  const canNextPage = totalCount
+    ? pagination.pageIndex < totalPages - 1
+    : table.getCanNextPage();
 
   // Get optimistic status style
   const getRowStyles = (row: TData): string => {
@@ -256,9 +358,6 @@ export function DataTable<
         return `bg-gray-50 ${rowClassName ? rowClassName(row) : ""}`;
     }
   };
-
-  // Clear row selection helper
-  const clearRowSelection = () => setRowSelection({});
 
   // Render the table
   return (
@@ -303,6 +402,11 @@ export function DataTable<
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {useServerSearch && serverSearchResults.isLoading && (
+                <div className="absolute right-2 top-2.5">
+                  <RefreshCw className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
           )}
 
@@ -437,19 +541,19 @@ export function DataTable<
       </div>
 
       {/* Pagination and page size controls */}
-      {filteredData.length > 0 && (
+      {(filteredData.length > 0 || !!hasMore) && (
         <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 p-4">
           <div className="flex items-center space-x-2">
             <p className="text-sm text-gray-700">
               {t(`${translationPrefix}.pagination.itemsPerPage`)}
             </p>
             <Select
-              value={`${currentPageSize ?? pagination.pageSize}`}
+              value={`${pagination.pageSize}`}
               onValueChange={(value) => {
                 const newSize = Number(value);
                 // Update local pagination state
-                setPagination((prev) => ({
-                  ...prev,
+                setPagination(() => ({
+                  pageIndex: 0, // Reset to first page when changing page size
                   pageSize: newSize,
                 }));
                 // Call the parent handler for global state
@@ -459,9 +563,7 @@ export function DataTable<
               }}
             >
               <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue
-                  placeholder={currentPageSize ?? pagination.pageSize}
-                />
+                <SelectValue placeholder={pagination.pageSize} />
               </SelectTrigger>
               <SelectContent>
                 {[5, 10, 20, 30, 40, 50].map((pageSize) => (
@@ -474,67 +576,82 @@ export function DataTable<
           </div>
 
           <div className="flex items-center">
-            {/* Load more button for infinite loading */}
-            {onLoadMore && hasMore && (
+            {/* Traditional pagination buttons */}
+            <div className="flex items-center space-x-1">
               <Button
-                onClick={onLoadMore}
-                disabled={isLoadingMore ?? !hasMore}
-                className="ml-2"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPageIndex = 0;
+                  if (onPageChange) {
+                    onPageChange(newPageIndex);
+                  }
+                  setPagination((prev) => ({
+                    ...prev,
+                    pageIndex: newPageIndex,
+                  }));
+                }}
+                disabled={!canPreviousPage}
               >
-                {isLoadingMore ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    {t(`${translationPrefix}.loading`)}
-                  </>
-                ) : (
-                  t(`${translationPrefix}.loadMore`)
-                )}
+                <ChevronsLeft className="h-4 w-4" />
               </Button>
-            )}
-
-            {/* Traditional pagination buttons (shown only if infinite loading is not used) */}
-            {!onLoadMore && (
-              <div className="flex items-center space-x-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.setPageIndex(0)}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="mx-2 text-sm text-gray-700">
-                  {t(`${translationPrefix}.pagination.showing`)}{" "}
-                  {table.getState().pagination.pageIndex + 1}{" "}
-                  {t(`${translationPrefix}.pagination.of`)}{" "}
-                  {table.getPageCount() || 1}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPageIndex = pagination.pageIndex - 1;
+                  if (onPageChange) {
+                    onPageChange(newPageIndex);
+                  }
+                  setPagination((prev) => ({
+                    ...prev,
+                    pageIndex: newPageIndex,
+                  }));
+                }}
+                disabled={!canPreviousPage}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="mx-2 text-sm text-gray-700">
+                {t(`${translationPrefix}.pagination.showing`)}{" "}
+                {pagination.pageIndex + 1}{" "}
+                {t(`${translationPrefix}.pagination.of`)} {totalPages ?? 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPageIndex = pagination.pageIndex + 1;
+                  if (onPageChange) {
+                    onPageChange(newPageIndex);
+                  }
+                  setPagination((prev) => ({
+                    ...prev,
+                    pageIndex: newPageIndex,
+                  }));
+                }}
+                disabled={!canNextPage}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPageIndex = totalPages - 1;
+                  if (onPageChange) {
+                    onPageChange(newPageIndex);
+                  }
+                  setPagination((prev) => ({
+                    ...prev,
+                    pageIndex: newPageIndex,
+                  }));
+                }}
+                disabled={!canNextPage}
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
