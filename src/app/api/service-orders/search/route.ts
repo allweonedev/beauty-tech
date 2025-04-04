@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
     // Create search query with proper Prisma types
     const whereClause: Prisma.ServiceOrderWhereInput = {
       OR: [
-        { number: { contains: search, mode: Prisma.QueryMode.insensitive } },
         {
           description: { contains: search, mode: Prisma.QueryMode.insensitive },
         },

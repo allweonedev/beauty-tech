@@ -12,7 +12,6 @@ import {
   useBulkDeleteContracts,
   useContractSearch,
 } from "@/hooks/useContracts";
-import { useClients } from "@/hooks/useClients";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { type Contract } from "@/types/contract";
 
@@ -44,7 +43,6 @@ export default function ContractsPage() {
   }, [contractsData]);
 
   // Fetch clients data (for the contract modal)
-  const { data: clients = [], isLoading: clientsLoading } = useClients();
 
   // Mutations
   const createContract = useCreateContract();
@@ -104,7 +102,6 @@ export default function ContractsPage() {
   const isMutating =
     createContract.isPending ||
     updateContract.isPending ||
-    clientsLoading ||
     bulkDeleteContracts.isPending;
 
   return (
@@ -153,7 +150,6 @@ export default function ContractsPage() {
 
       <ContractModal
         contract={selectedContract}
-        clients={clients}
         open={showContractModal}
         isMutating={isMutating}
         onClose={() => {
