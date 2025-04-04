@@ -48,7 +48,7 @@ function getHttpMethods(routePath: string): string[] {
 async function generateApiRouteMap() {
   const routes = getApiRoutes(apiDir);
 
-  let output = `// Auto-generated API route map\n// DO NOT EDIT MANUALLY\n\n`;
+  let output = `/* eslint-disable @typescript-eslint/consistent-type-imports */\n// Auto-generated API route map\n// DO NOT EDIT MANUALLY\n\n`;
   output += `export interface ApiRouteMap {\n`;
 
   for (const route of routes) {
