@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BulkDeleteButton } from "@/components/ui/bulk-delete-button";
+import { BulkDeleteButton } from "@/components/helper/bulk-delete-button";
 
 // Base entity interface that all data types should extend
 export interface BaseEntity {

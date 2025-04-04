@@ -4,7 +4,7 @@ import {
   createActionsColumn,
   createDateColumn,
   createBadgeColumn,
-} from "@/components/ui/table-column-helper";
+} from "@/components/helper/table-column-helper";
 import type { Product } from "@/types/product";
 import { type useTranslations } from "next-intl";
 import { useDeleteProduct } from "@/hooks/useProducts";

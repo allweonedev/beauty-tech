@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo } from "react";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/helper/data-table";
 import { getServiceOrderColumns } from "./ServiceOrderColumns";
 import type { ServiceOrder } from "./ServiceOrderModal";
 import { useTranslations } from "next-intl";

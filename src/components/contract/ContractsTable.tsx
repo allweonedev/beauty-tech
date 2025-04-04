@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo } from "react";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/helper/data-table";
 import { getContractColumns } from "./ContractColumns";
 import type { Contract } from "@/types/contract";
 import { useTranslations } from "next-intl";

@@ -6,7 +6,7 @@ import {
   createActionsColumn,
   createDateColumn,
   createBadgeColumn,
-} from "@/components/ui/table-column-helper";
+} from "@/components/helper/table-column-helper";
 import { type ServiceOrder } from "./ServiceOrderModal";
 import { type useTranslations } from "next-intl";
 import { useDeleteServiceOrder } from "@/hooks/useServiceOrders";

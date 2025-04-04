@@ -6,7 +6,7 @@ import {
   createActionsColumn,
   createDateColumn,
   createBadgeColumn,
-} from "@/components/ui/table-column-helper";
+} from "@/components/helper/table-column-helper";
 import type { Contract } from "@/types/contract";
 import { type useTranslations } from "next-intl";
 import { useDeleteContract } from "@/hooks/useContracts";

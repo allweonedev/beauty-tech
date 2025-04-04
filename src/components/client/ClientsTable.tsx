@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/helper/data-table";
 import { getClientColumns } from "./ClientColumns";
 import type { Client } from "@/types/client";
 import { useTranslations } from "next-intl";

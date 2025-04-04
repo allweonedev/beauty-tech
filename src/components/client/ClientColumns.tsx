@@ -7,7 +7,7 @@ import {
   createDateColumn,
   createBadgeColumn,
   createCountColumn,
-} from "@/components/ui/table-column-helper";
+} from "@/components/helper/table-column-helper";
 import type { Client } from "@/types/client";
 import { type useTranslations } from "next-intl";
 import { useDeleteClient } from "@/hooks/useClients";
