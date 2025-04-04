@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "generate-api-types": "node --loader ts-node/esm src/scripts/generate-api-types.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
