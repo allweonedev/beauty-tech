@@ -1,15 +1,18 @@
 "use client";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ContractsTable } from "@/components/contract/ContractsTable";
+import ContractsTable from "@/components/contract/ContractsTable";
 import { ContractModal } from "@/components/contract/ContractModal";
 import { useToast } from "@/components/ui/use-toast";
-import { useCreateContract, useUpdateContract } from "@/hooks/useContracts";
+import {
+  useCreateContract,
+  useUpdateContract,
+  useContracts,
+} from "@/hooks/useContracts";
 import { useClients } from "@/hooks/useClients";
-import type { Contract } from "@/components/contract/ContractModal";
-import type { Client } from "@/types";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { type Contract } from "@/types/contract";
 
 export default function ContractsPage() {
   const router = useRouter();
@@ -21,12 +24,11 @@ export default function ContractsPage() {
   const { toast } = useToast();
 
   // Fetch contracts data
+  const { data: contracts = [], isLoading: contractsLoading } = useContracts();
 
   // Fetch clients data (for the contract modal)
-
-  // Combined loading state
-
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+
   // Mutations
   const createContract = useCreateContract();
   const updateContract = useUpdateContract();
@@ -107,12 +109,24 @@ export default function ContractsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <ContractsTable />
+        <ContractsTable
+          contracts={contracts as unknown as Contract[]}
+          isLoading={contractsLoading}
+          isMutating={isMutating}
+          onNewContract={() => {
+            setSelectedContract(undefined);
+            setShowContractModal(true);
+          }}
+          onEditContract={(contract) => {
+            setSelectedContract(contract);
+            setShowContractModal(true);
+          }}
+        />
       </main>
 
       <ContractModal
         contract={selectedContract}
-        clients={clients as unknown as Client[]}
+        clients={clients}
         open={showContractModal}
         isMutating={isMutating}
         onClose={() => {

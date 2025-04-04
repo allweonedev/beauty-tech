@@ -31,21 +31,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import { useToast } from "@/components/ui/use-toast";
-import type { Client } from "@/types";
-
-export interface Contract {
-  id: string;
-  title: string;
-  description: string;
-  client: Client;
-  status: "pending" | "signed" | "expired" | "cancelled";
-  documentUrl: string;
-  signatureUrl?: string;
-  signedAt?: Date;
-  expiresAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { Client } from "@/types/client";
+import type { Contract } from "@/types/contract";
 
 // Form validation schema
 const contractFormSchema = z.object({

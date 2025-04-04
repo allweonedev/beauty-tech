@@ -2,15 +2,13 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ProductsList } from "@/components/product/ProductsTable";
+import ProductsTable from "@/components/product/ProductsTable";
 import { ProductModal } from "@/components/product/ProductModal";
 import { type Product } from "@/types/product";
 import {
   usePaginatedProducts,
   useCreateProduct,
   useUpdateProduct,
-  useDeleteProduct,
-  useBulkDeleteProducts,
 } from "@/hooks/useProducts";
 
 export default function ProductsPage() {
@@ -32,11 +30,6 @@ export default function ProductsPage() {
     useCreateProduct();
   const { mutateAsync: updateProduct, isPending: isUpdating } =
     useUpdateProduct();
-  const { mutateAsync: deleteProduct, isPending: isDeleting } =
-    useDeleteProduct();
-  const { mutateAsync: bulkDeleteProducts, isPending: isBulkDeleting } =
-    useBulkDeleteProducts();
-
   // Generate flat list of products from paginated data
   const products = React.useMemo(() => {
     if (!productsData) return [];
@@ -44,7 +37,7 @@ export default function ProductsPage() {
   }, [productsData]);
 
   // Flag for any loading state
-  const isMutating = isCreating || isUpdating || isDeleting || isBulkDeleting;
+  const isMutating = isCreating || isUpdating;
 
   // Handle product creation/update
   const handleSaveProduct = async (productData: Partial<Product>) => {
@@ -62,16 +55,6 @@ export default function ProductsPage() {
 
     setShowProductModal(false);
     setSelectedProduct(undefined);
-  };
-
-  // Handle product deletion
-  const handleDeleteProduct = async (productId: string) => {
-    await deleteProduct(productId);
-  };
-
-  // Handle bulk product deletion
-  const handleBulkDeleteProducts = async (productIds: string[]) => {
-    await bulkDeleteProducts(productIds);
   };
 
   return (
@@ -94,7 +77,7 @@ export default function ProductsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <ProductsList
+        <ProductsTable
           products={products}
           onNewProduct={() => {
             setSelectedProduct(undefined);
@@ -104,8 +87,6 @@ export default function ProductsPage() {
             setSelectedProduct(product);
             setShowProductModal(true);
           }}
-          onDeleteProduct={handleDeleteProduct}
-          onBulkDeleteProducts={handleBulkDeleteProducts}
           isLoading={isLoading}
           isMutating={isMutating}
           onLoadMore={() => fetchNextPage()}

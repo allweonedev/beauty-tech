@@ -80,49 +80,6 @@ export default function ClientsPage() {
     setSelectedClient(undefined);
   };
 
-  // Handle client deletion
-  const handleDeleteClient = (clientId: string) => {
-    if (confirm(t("clients.deleteConfirm.message"))) {
-      deleteClient.mutate(clientId, {
-        onSuccess: () => {
-          toast({
-            title: t("clients.deleteClient"),
-            description: t("clients.deleteSuccess"),
-          });
-        },
-        onError: () => {
-          toast({
-            title: t("common.error"),
-            description: t("clients.deleteError"),
-            variant: "destructive",
-          });
-        },
-      });
-    }
-  };
-
-  // Handle bulk client deletion
-  const handleBulkDeleteClients = async (clientIds: string[]) => {
-    if (!clientIds || clientIds.length === 0) return;
-
-    try {
-      await bulkDeleteClients.mutateAsync(clientIds);
-
-      toast({
-        title: t("clients.deleteClient"),
-        description: t("clients.deleteSuccess"),
-      });
-    } catch (error) {
-      console.error("Error deleting clients:", error);
-
-      toast({
-        title: t("common.error"),
-        description: t("clients.deleteError"),
-        variant: "destructive",
-      });
-    }
-  };
-
   // Is any mutation in progress?
   const isMutating =
     createClient.isPending ||
@@ -165,8 +122,6 @@ export default function ClientsPage() {
             setSelectedClient(client);
             setShowClientModal(true);
           }}
-          onDeleteClient={handleDeleteClient}
-          onBulkDeleteClients={handleBulkDeleteClients}
         />
       </main>
 

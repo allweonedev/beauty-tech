@@ -7,7 +7,7 @@ import {
   useInfiniteQuery,
 } from "@tanstack/react-query";
 import { api } from "@/lib/apiFetch";
-import type { Contract } from "@/components/contract/ContractModal";
+import type { Contract } from "@/types/contract";
 
 // Extended Contract interface with optimistic flag
 interface OptimisticContract extends Contract {

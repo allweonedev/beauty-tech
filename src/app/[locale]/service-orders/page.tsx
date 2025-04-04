@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ServiceOrdersTable } from "@/components/service-order/ServiceOrdersTable";
+import ServiceOrdersTable from "@/components/service-order/ServiceOrdersTable";
 import { ServiceOrderModal } from "@/components/service-order/ServiceOrderModal";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -88,49 +88,6 @@ export default function ServiceOrdersPage() {
     setSelectedServiceOrder(undefined);
   };
 
-  // Handle service order deletion
-  const handleDeleteServiceOrder = (serviceOrderId: string) => {
-    if (confirm(t("serviceOrders.deleteConfirm.message"))) {
-      deleteServiceOrder.mutate(serviceOrderId, {
-        onSuccess: () => {
-          toast({
-            title: t("serviceOrders.deleteServiceOrder"),
-            description: t("serviceOrders.deleteSuccess"),
-          });
-        },
-        onError: () => {
-          toast({
-            title: t("common.error"),
-            description: t("serviceOrders.deleteError"),
-            variant: "destructive",
-          });
-        },
-      });
-    }
-  };
-
-  // Handle bulk service order deletion
-  const handleBulkDeleteServiceOrders = async (serviceOrderIds: string[]) => {
-    if (!serviceOrderIds || serviceOrderIds.length === 0) return;
-
-    try {
-      await bulkDeleteServiceOrders.mutateAsync(serviceOrderIds);
-
-      toast({
-        title: t("serviceOrders.deleteServiceOrder"),
-        description: t("serviceOrders.deleteSuccess"),
-      });
-    } catch (error) {
-      console.error("Error deleting service orders:", error);
-
-      toast({
-        title: t("common.error"),
-        description: t("serviceOrders.deleteError"),
-        variant: "destructive",
-      });
-    }
-  };
-
   // Is any mutation in progress?
   const isMutating =
     createServiceOrder.isPending ||
@@ -173,8 +130,6 @@ export default function ServiceOrdersPage() {
             setSelectedServiceOrder(serviceOrder);
             setShowServiceOrderModal(true);
           }}
-          onDeleteServiceOrder={handleDeleteServiceOrder}
-          onBulkDeleteServiceOrders={handleBulkDeleteServiceOrders}
         />
       </main>
 
