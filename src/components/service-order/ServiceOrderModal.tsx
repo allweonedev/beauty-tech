@@ -251,8 +251,16 @@ export function ServiceOrderModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full max-w-4xl bg-background max-h-[90vh] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={(open) => !open && onClose()}
+      modal={true}
+    >
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="w-full max-w-4xl bg-background max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>
             {serviceOrder
@@ -641,12 +649,29 @@ export function ServiceOrderModal({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                {t("common.cancel")}
-              </Button>
-              <Button type="submit" disabled={isMutating}>
-                {isMutating ? t("common.saving") : t("common.save")}
-              </Button>
+              <div className="w-full flex justify-between">
+                {!serviceOrder && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      form.reset();
+                      setAttachments([]);
+                      setMaintenanceHistory([]);
+                    }}
+                  >
+                    {t("common.clear")}
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button type="submit" disabled={isMutating}>
+                    {isMutating ? t("common.saving") : t("common.save")}
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </form>
         </Form>

@@ -141,8 +141,16 @@ export function ProductModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full max-w-3xl bg-background max-h-[90vh] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={(open) => !open && onClose()}
+      modal={true}
+    >
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="w-full max-w-3xl bg-background max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>
             {product ? t("products.editProduct") : t("products.newProduct")}
@@ -323,12 +331,27 @@ export function ProductModal({
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                {t("products.cancel")}
-              </Button>
-              <Button type="submit" disabled={isMutating}>
-                {isMutating ? t("products.saving") : t("products.save")}
-              </Button>
+              <div className="w-full flex justify-between">
+                {!product && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      form.reset();
+                    }}
+                  >
+                    {t("common.clear")}
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button type="submit" disabled={isMutating}>
+                    {isMutating ? t("common.saving") : t("common.save")}
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </form>
         </Form>

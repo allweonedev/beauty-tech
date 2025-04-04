@@ -144,7 +144,11 @@ export function ClientModal({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full max-w-4xl bg-background max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="w-full max-w-4xl bg-background max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>
             {client ? t("clients.editClient") : t("clients.newClient")}
@@ -266,13 +270,13 @@ export function ClientModal({
               />
             </div>
 
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border-t border-input pt-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 {t("clients.form.documents.title")}
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2  rounded-lg cursor-pointer border-input hover:bg-accent">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <Upload className="w-8 h-8 mb-2 text-gray-500" />
                       <p className="mb-2 text-sm text-gray-500">
@@ -372,12 +376,31 @@ export function ClientModal({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                {t("common.cancel")}
-              </Button>
-              <Button type="submit" disabled={isMutating}>
-                {isMutating ? t("common.saving") : t("common.save")}
-              </Button>
+              <div className="w-full flex justify-between">
+                {!client && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      form.reset();
+                      setDocuments([]);
+                      setNotes([]);
+                      setNewNote("");
+                      setError("");
+                    }}
+                  >
+                    {t("common.clear")}
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button type="submit" disabled={isMutating}>
+                    {isMutating ? t("common.saving") : t("common.save")}
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </form>
         </Form>
