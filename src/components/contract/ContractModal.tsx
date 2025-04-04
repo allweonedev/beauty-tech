@@ -33,6 +33,7 @@ import * as z from "zod";
 import { useToast } from "@/components/ui/use-toast";
 import type { Client } from "@/types/client";
 import type { Contract } from "@/types/contract";
+import { useUploadThing } from "@/hooks/useUploadthing";
 
 // Form validation schema
 const contractFormSchema = z.object({
@@ -72,6 +73,27 @@ export function ContractModal({
   const t = useTranslations();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { startUpload, isUploading: uploadingInProgress } = useUploadThing(
+    "documentUploader",
+    {
+      onClientUploadComplete: (res) => {
+        if (res?.[0]) {
+          form.setValue("documentUrl", res[0].url);
+          setIsUploading(false);
+        }
+      },
+      onUploadError: (error) => {
+        toast({
+          variant: "destructive",
+          title: t("contracts.uploadError") ?? "Upload Error",
+          description: error.message,
+        });
+        setIsUploading(false);
+      },
+    }
+  );
 
   // Initialize form with default values
   const form = useForm<ContractFormValues>({
@@ -106,28 +128,31 @@ export function ContractModal({
   // Form submission handler
   const onSubmit = async (data: ContractFormValues) => {
     try {
+      // Upload document if it exists
+      if (file) {
+        setIsUploading(true);
+        await startUpload([file]);
+        // The URL will be set in the onClientUploadComplete callback
+        // We'll wait for the upload to complete before proceeding
+        return;
+      }
+
       const client = clients.find((c) => c.id === data.clientId);
       if (!client) {
         toast({
           variant: "destructive",
-          title: t("common.error") || "Erro",
+          title: t("common.error") ?? "Erro",
           description:
-            t("contracts.clientNotFound") || "Cliente não encontrado",
+            t("contracts.clientNotFound") ?? "Cliente não encontrado",
         });
         return;
-      }
-
-      let documentUrl = data.documentUrl;
-      if (file) {
-        // In a real app, upload the file to a storage service
-        documentUrl = URL.createObjectURL(file);
       }
 
       const contractData: Partial<Contract> = {
         title: data.title,
         description: data.description,
         client,
-        documentUrl,
+        documentUrl: data.documentUrl,
         status: contract?.status ?? "pending",
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
         updatedAt: new Date(),
@@ -139,11 +164,53 @@ export function ContractModal({
       console.error("Error saving contract:", err);
       toast({
         variant: "destructive",
-        title: t("contracts.saveError") || "Erro ao salvar contrato",
+        title: t("contracts.saveError") ?? "Erro ao salvar contrato",
         description: String(err),
       });
     }
   };
+
+  // Watch for upload completion and submit the form
+  useEffect(() => {
+    if (isUploading && !uploadingInProgress) {
+      // Upload finished, now submit form with the URL
+      const data = form.getValues();
+
+      const client = clients.find((c) => c.id === data.clientId);
+      if (!client) {
+        toast({
+          variant: "destructive",
+          title: t("common.error") ?? "Erro",
+          description:
+            t("contracts.clientNotFound") ?? "Cliente não encontrado",
+        });
+        return;
+      }
+
+      const contractData: Partial<Contract> = {
+        title: data.title,
+        description: data.description,
+        client,
+        documentUrl: data.documentUrl,
+        status: contract?.status ?? "pending",
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
+        updatedAt: new Date(),
+      };
+
+      onSave(contractData);
+      onClose();
+    }
+  }, [
+    isUploading,
+    uploadingInProgress,
+    form,
+    clients,
+    contract,
+    t,
+    toast,
+    onSave,
+    onClose,
+  ]);
 
   // Form error handler
   const onError = (errors: FieldErrors<ContractFormValues>) => {
@@ -155,10 +222,10 @@ export function ContractModal({
     toast({
       variant: "destructive",
       title:
-        t("contracts.formValidationError") || "Erro de validação do formulário",
+        t("contracts.formValidationError") ?? "Erro de validação do formulário",
       description:
-        errorMessages ||
-        t("contracts.fixFormErrors") ||
+        errorMessages ??
+        t("contracts.fixFormErrors") ??
         "Corrija os erros do formulário antes de enviar",
     });
   };
@@ -167,6 +234,10 @@ export function ContractModal({
     const files = e.target.files;
     if (files && files.length > 0) {
       setFile(files[0]);
+
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(files[0]);
+      form.setValue("documentUrl", previewUrl);
     }
   };
 
@@ -174,18 +245,18 @@ export function ContractModal({
     try {
       // In a real app, integrate with DocuSign API here
       toast({
-        title: t("contracts.sentContract") || "Contrato enviado",
+        title: t("contracts.sentContract") ?? "Contrato enviado",
         description:
-          t("contracts.sentForSignature") ||
+          t("contracts.sentForSignature") ??
           "Contrato enviado para assinatura digital!",
       });
     } catch (error) {
       console.error("Error sending for signature:", error);
       toast({
         variant: "destructive",
-        title: t("common.error") || "Erro",
+        title: t("common.error") ?? "Erro",
         description:
-          t("contracts.signatureError") ||
+          t("contracts.signatureError") ??
           "Erro ao enviar para assinatura. Tente novamente.",
       });
     }
@@ -421,7 +492,7 @@ export function ContractModal({
                       setFile(null);
                     }}
                   >
-                    {t("common.clear") || "Limpar"}
+                    {t("common.clear") ?? "Limpar"}
                   </Button>
                 )}
                 <div className="flex gap-2">
@@ -429,12 +500,19 @@ export function ContractModal({
                     type="button"
                     variant="outline"
                     onClick={onClose}
-                    disabled={isMutating}
+                    disabled={isMutating ?? isUploading}
                   >
-                    {t("common.cancel") || "Cancelar"}
+                    {t("common.cancel") ?? "Cancelar"}
                   </Button>
-                  <Button type="submit" disabled={isMutating}>
-                    {t("common.save") || "Salvar"}
+                  <Button
+                    type="submit"
+                    disabled={isMutating ?? isUploading ?? uploadingInProgress}
+                  >
+                    {(isUploading ?? uploadingInProgress)
+                      ? (t("common.uploading") ?? "Uploading...")
+                      : isMutating
+                        ? (t("common.saving") ?? "Salvando...")
+                        : (t("common.save") ?? "Salvar")}
                   </Button>
                 </div>
               </div>

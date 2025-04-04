@@ -31,6 +31,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useUploadThing } from "@/hooks/useUploadthing";
+import { useToast } from "@/components/ui/use-toast";
 
 export interface ServiceOrder {
   id: string;
@@ -105,6 +107,7 @@ export function ServiceOrderModal({
   isMutating,
 }: ServiceOrderModalProps) {
   const t = useTranslations();
+  const { toast } = useToast();
 
   // Initialize form with default values
   const form = useForm<ServiceOrderFormValues>({
@@ -148,6 +151,7 @@ export function ServiceOrderModal({
       });
       setAttachments(serviceOrder?.attachments ?? []);
       setMaintenanceHistory(serviceOrder?.maintenanceHistory ?? []);
+      setUploadingFiles([]);
     }
   }, [serviceOrder, open, form]);
 
@@ -166,12 +170,52 @@ export function ServiceOrderModal({
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { startUpload, isUploading: uploadingInProgress } = useUploadThing(
+    "documentUploader",
+    {
+      onClientUploadComplete: (res) => {
+        if (res && res.length > 0) {
+          const newAttachments: Attachment[] = res.map((file) => ({
+            id: crypto.randomUUID(),
+            name: file.name,
+            url: file.url,
+            type: file.type || "application/octet-stream",
+            uploadedAt: new Date(),
+          }));
+
+          setAttachments((prev) => [...prev, ...newAttachments]);
+          setIsUploading(false);
+        }
+      },
+      onUploadError: (error) => {
+        setError(error.message);
+        toast({
+          variant: "destructive",
+          title: t("serviceOrders.uploadError") ?? "Upload Error",
+          description: error.message,
+        });
+        setIsUploading(false);
+      },
+    }
+  );
 
   // Form submission handler
   const onSubmit = async (data: ServiceOrderFormValues) => {
     setError(null);
 
     try {
+      // Upload files if there are any
+      if (uploadingFiles.length > 0) {
+        setIsUploading(true);
+        await startUpload(uploadingFiles);
+        // The attachments will be updated in the onClientUploadComplete callback
+        // We'll wait for the upload to complete before proceeding
+        return;
+      }
+
       const client = clients.find((c) => c.id === data.clientId);
       const product = data.productId
         ? products.find((p) => p.id === data.productId)
@@ -207,11 +251,64 @@ export function ServiceOrderModal({
     }
   };
 
+  // Watch for upload completion and submit the form
+  useEffect(() => {
+    if (isUploading && !uploadingInProgress) {
+      // Upload completed, now submit the form with the updated attachments
+      const data = form.getValues();
+
+      const client = clients.find((c) => c.id === data.clientId);
+      const product = data.productId
+        ? products.find((p) => p.id === data.productId)
+        : undefined;
+
+      if (!client) {
+        setError(t("serviceOrders.errorClientRequired"));
+        return;
+      }
+
+      const scheduledDateTime =
+        data.scheduledDate && data.scheduledTime
+          ? new Date(`${data.scheduledDate}T${data.scheduledTime}`)
+          : undefined;
+
+      const serviceOrderData: Partial<ServiceOrder> = {
+        client,
+        product,
+        status: data.status,
+        description: data.description,
+        technicalNotes: data.technicalNotes ?? "",
+        scheduledDate: scheduledDateTime,
+        attachments,
+        maintenanceHistory,
+        updatedAt: new Date(),
+      };
+
+      onSave(serviceOrderData);
+      onClose();
+    }
+  }, [
+    isUploading,
+    uploadingInProgress,
+    form,
+    clients,
+    products,
+    attachments,
+    maintenanceHistory,
+    t,
+    onSave,
+    onClose,
+  ]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const files = e.target.files;
       if (!files || files.length === 0) return;
 
+      // Store files for actual upload during submission
+      setUploadingFiles((prev) => [...prev, ...Array.from(files)]);
+
+      // Create temporary preview URLs for display
       const newAttachments: Attachment[] = [];
 
       for (const file of Array.from(files)) {
@@ -658,6 +755,7 @@ export function ServiceOrderModal({
                       form.reset();
                       setAttachments([]);
                       setMaintenanceHistory([]);
+                      setUploadingFiles([]);
                     }}
                   >
                     {t("common.clear")}
@@ -667,8 +765,15 @@ export function ServiceOrderModal({
                   <Button type="button" variant="outline" onClick={onClose}>
                     {t("common.cancel")}
                   </Button>
-                  <Button type="submit" disabled={isMutating}>
-                    {isMutating ? t("common.saving") : t("common.save")}
+                  <Button
+                    type="submit"
+                    disabled={isMutating ?? isUploading ?? uploadingInProgress}
+                  >
+                    {(isUploading ?? uploadingInProgress)
+                      ? (t("common.uploading") ?? "Uploading...")
+                      : isMutating
+                        ? t("common.saving")
+                        : t("common.save")}
                   </Button>
                 </div>
               </div>

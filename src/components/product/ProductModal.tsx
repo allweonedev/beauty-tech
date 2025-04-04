@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -32,6 +32,7 @@ import { type FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/ui/use-toast";
+import { useUploadThing } from "@/hooks/useUploadthing";
 
 // Form validation schema
 const productFormSchema = z.object({
@@ -66,6 +67,28 @@ export function ProductModal({
 }: ProductModalProps) {
   const t = useTranslations();
   const { toast } = useToast();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { startUpload, isUploading: uploadingInProgress } = useUploadThing(
+    "imageUploader",
+    {
+      onClientUploadComplete: (res) => {
+        if (res?.[0]) {
+          form.setValue("imageUrl", res[0].url);
+          setIsUploading(false);
+        }
+      },
+      onUploadError: (error) => {
+        toast({
+          variant: "destructive",
+          title: t("products.uploadError") ?? "Upload Error",
+          description: error.message,
+        });
+        setIsUploading(false);
+      },
+    }
+  );
 
   // Initialize form with default values
   const form = useForm<ProductFormValues>({
@@ -99,6 +122,15 @@ export function ProductModal({
   // Form submission handler
   const onSubmit = async (data: ProductFormValues) => {
     try {
+      // Upload image if it exists
+      if (imageFile) {
+        setIsUploading(true);
+        await startUpload([imageFile]);
+        // The URL will be set in the onClientUploadComplete callback
+        // We'll wait for the upload to complete before proceeding
+        return;
+      }
+
       const productData: Partial<Product> = {
         ...data,
         imageUrl: data.imageUrl ?? undefined,
@@ -116,6 +148,22 @@ export function ProductModal({
       });
     }
   };
+
+  // Watch for upload completion and submit the form
+  useEffect(() => {
+    if (isUploading && !uploadingInProgress) {
+      // Upload finished, now submit the form with the URL
+      const data = form.getValues();
+      const productData: Partial<Product> = {
+        ...data,
+        imageUrl: data.imageUrl ?? undefined,
+      };
+
+      console.log(productData);
+      onSave(productData);
+      onClose();
+    }
+  }, [isUploading, uploadingInProgress, form, onSave, onClose]);
 
   // Form error handler
   const onError = (errors: FieldErrors<ProductFormValues>) => {
@@ -135,6 +183,8 @@ export function ProductModal({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
+      // Create a preview
       const imageUrl = URL.createObjectURL(file);
       form.setValue("imageUrl", imageUrl);
     }
@@ -338,6 +388,7 @@ export function ProductModal({
                     variant="destructive"
                     onClick={() => {
                       form.reset();
+                      setImageFile(null);
                     }}
                   >
                     {t("common.clear")}
@@ -347,8 +398,15 @@ export function ProductModal({
                   <Button type="button" variant="outline" onClick={onClose}>
                     {t("common.cancel")}
                   </Button>
-                  <Button type="submit" disabled={isMutating}>
-                    {isMutating ? t("common.saving") : t("common.save")}
+                  <Button
+                    type="submit"
+                    disabled={isMutating ?? isUploading ?? uploadingInProgress}
+                  >
+                    {(isUploading ?? uploadingInProgress)
+                      ? (t("common.uploading") ?? "Uploading...")
+                      : isMutating
+                        ? t("common.saving")
+                        : t("common.save")}
                   </Button>
                 </div>
               </div>

@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import type { Client, ClientDocument, ClientNote } from "@/types/client";
+import { useUploadThing } from "@/hooks/useUploadthing";
 
 // Form validation schema
 const clientFormSchema = z.object({
@@ -53,6 +54,7 @@ export function ClientModal({
   isMutating,
 }: ClientModalProps) {
   const t = useTranslations();
+
   // Initialize form with default values
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -83,6 +85,7 @@ export function ClientModal({
       });
       setDocuments(client?.documents ?? []);
       setNotes(client?.notes ?? []);
+      setUploadingFiles([]);
     }
   }, [client, open, form]);
 
@@ -92,12 +95,47 @@ export function ClientModal({
   const [notes, setNotes] = useState<ClientNote[]>(client?.notes ?? []);
   const [newNote, setNewNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { startUpload, isUploading: uploadingInProgress } = useUploadThing(
+    "documentUploader",
+    {
+      onClientUploadComplete: (res) => {
+        if (res && res.length > 0) {
+          const newDocuments: ClientDocument[] = res.map((file) => ({
+            id: crypto.randomUUID(),
+            clientId: client?.id ?? "",
+            name: file.name,
+            url: file.url,
+            uploadedAt: new Date(),
+          }));
+
+          setDocuments((prev) => [...prev, ...newDocuments]);
+          setIsUploading(false);
+        }
+      },
+      onUploadError: (error) => {
+        setError(error.message);
+        setIsUploading(false);
+      },
+    }
+  );
 
   // Form submission handler
   const onSubmit = async (data: ClientFormValues) => {
     setError(null);
 
     try {
+      // Upload files if there are any
+      if (uploadingFiles.length > 0) {
+        setIsUploading(true);
+        await startUpload(uploadingFiles);
+        // The documents will be updated in the onClientUploadComplete callback
+        // We'll wait for the upload to complete before proceeding
+        return;
+      }
+
       const clientData: Partial<Client> = {
         ...data,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
@@ -115,9 +153,41 @@ export function ClientModal({
     }
   };
 
+  // Watch for upload completion and submit the form
+  useEffect(() => {
+    if (isUploading && !uploadingInProgress) {
+      // Upload completed, now submit the form
+      const data = form.getValues();
+      const clientData: Partial<Client> = {
+        ...data,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        documents,
+        notes,
+        interactions: client?.interactions ?? [],
+        source: client?.source ?? "manual",
+      };
+
+      onSave(clientData);
+      onClose();
+    }
+  }, [
+    isUploading,
+    uploadingInProgress,
+    form,
+    documents,
+    notes,
+    client,
+    onSave,
+    onClose,
+  ]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      // Store files for actual upload during submission
+      setUploadingFiles((prev) => [...prev, ...Array.from(files)]);
+
+      // Create temporary preview URLs
       const newDocuments: ClientDocument[] = Array.from(files).map((file) => ({
         id: crypto.randomUUID(),
         clientId: client?.id ?? "",
@@ -125,6 +195,7 @@ export function ClientModal({
         url: URL.createObjectURL(file),
         uploadedAt: new Date(),
       }));
+
       setDocuments([...documents, ...newDocuments]);
     }
   };
@@ -387,6 +458,7 @@ export function ClientModal({
                       setNotes([]);
                       setNewNote("");
                       setError("");
+                      setUploadingFiles([]);
                     }}
                   >
                     {t("common.clear")}
@@ -396,8 +468,15 @@ export function ClientModal({
                   <Button type="button" variant="outline" onClick={onClose}>
                     {t("common.cancel")}
                   </Button>
-                  <Button type="submit" disabled={isMutating}>
-                    {isMutating ? t("common.saving") : t("common.save")}
+                  <Button
+                    type="submit"
+                    disabled={isMutating ?? isUploading ?? uploadingInProgress}
+                  >
+                    {(isUploading ?? uploadingInProgress)
+                      ? (t("common.uploading") ?? "Uploading...")
+                      : isMutating
+                        ? t("common.saving")
+                        : t("common.save")}
                   </Button>
                 </div>
               </div>
