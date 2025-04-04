@@ -17,9 +17,6 @@ export interface ApiRouteMap {
   "/api/contracts/bulk": {
     DELETE: typeof import("../app/api/contracts/bulk/route").DELETE;
   };
-  "/api/contracts/count": {
-    GET: typeof import("../app/api/contracts/count/route").GET;
-  };
   "/api/contracts": {
     GET: typeof import("../app/api/contracts/route").GET;
     POST: typeof import("../app/api/contracts/route").POST;
