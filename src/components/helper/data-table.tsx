@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import debounce from "lodash.debounce";
 import {
   type UseMutationResult,
   type UseQueryResult,
@@ -201,16 +202,23 @@ export function DataTable<
     }
   }, [currentPageSize, pagination.pageSize, currentPage, pagination.pageIndex]);
 
-  // Debounce search query for server-side search
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, serverSearchDebounce);
+  // Create debounced search handler with lodash.debounce
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchQuery(value);
+    }, serverSearchDebounce),
+    [serverSearchDebounce]
+  );
 
+  // Update debouncedSearchQuery when searchQuery changes
+  useEffect(() => {
+    debouncedSearch(searchQuery);
+    // Cleanup
     return () => {
-      clearTimeout(handler);
+      debouncedSearch.cancel();
     };
-  }, [searchQuery, serverSearchDebounce]);
+  }, [searchQuery, debouncedSearch]);
 
   // Get server-side search results if hook is provided
   const serverSearchQuery =
@@ -218,6 +226,23 @@ export function DataTable<
   const serverSearchResults = useServerSearch?.(serverSearchQuery) ?? {
     data: undefined,
     isLoading: false,
+  };
+
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    // Reset to first page when searching
+    setPagination((prev) => ({
+      ...prev,
+      pageIndex: 0,
+    }));
+
+    // Notify parent component of page change if callback exists
+    if (onPageChange) {
+      onPageChange(0);
+    }
   };
 
   // Combine local data with server search results
@@ -231,21 +256,14 @@ export function DataTable<
       return data;
     }
 
-    // If server search is loading, keep showing existing data
+    // If server search is loading, show loading state
     if (serverSearchResults.isLoading) {
       return data;
     }
 
     if (serverSearchResults.data) {
-      // Create a Set of existing IDs to avoid duplicates
-      const existingIds = new Set(data.map((item) => item.id));
-      // Filter out server results that are already in local data to avoid duplicates
-      const uniqueServerResults = serverSearchResults.data.filter(
-        (item) => !existingIds.has(item.id)
-      );
-
-      // Combine local data with unique server results
-      return [...data, ...uniqueServerResults];
+      // When using server search, replace data completely instead of combining
+      return serverSearchResults.data;
     }
 
     return data;
@@ -262,17 +280,18 @@ export function DataTable<
     return combinedData.filter((item) => {
       // Search filtering - if server search is active, we don't need client-side filtering
       const matchesSearch =
-        !searchQuery ||
-        (useServerSearch ?? !searchKeys) ||
-        searchKeys?.some((key) => {
-          const value = item[key];
-          if (typeof value === "string") {
-            return value.toLowerCase().includes(searchQuery.toLowerCase());
-          } else if (typeof value === "number") {
-            return value.toString().includes(searchQuery);
-          }
-          return false;
-        });
+        useServerSearch ??
+        (!searchQuery ||
+          !searchKeys ||
+          searchKeys.some((key) => {
+            const value = item[key];
+            if (typeof value === "string") {
+              return value.toLowerCase().includes(searchQuery.toLowerCase());
+            } else if (typeof value === "number") {
+              return value.toString().includes(searchQuery);
+            }
+            return false;
+          }));
 
       // Filter dropdown filtering
       let matchesFilter = true;
@@ -400,7 +419,7 @@ export function DataTable<
                 placeholder={searchPlaceholder ?? t("common.search")}
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
               />
               {useServerSearch && serverSearchResults.isLoading && (
                 <div className="absolute right-2 top-2.5">
