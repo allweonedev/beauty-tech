@@ -321,8 +321,86 @@ export function createCountColumn<TData extends BaseEntity>(
     header,
     cell: (info) => {
       const value = info.getValue();
-      if (!value || !Array.isArray(value)) return 0;
-      return value.length;
+      return (
+        <div className="text-sm text-gray-900">
+          {typeof value === "number" ? value : "-"}
+        </div>
+      );
+    },
+    enableSorting: options?.enableSorting !== false,
+  }) as ColumnDef<TData>;
+}
+
+// Helper to create a standard currency column
+export function createCurrencyColumn<TData extends BaseEntity>(
+  accessor: keyof TData,
+  header: string,
+  options?: {
+    locale?: string;
+    currency?: string;
+    enableSorting?: boolean;
+  }
+): ColumnDef<TData> {
+  const columnHelper = createColumnHelper<TData>();
+
+  return columnHelper.accessor((row) => row[accessor], {
+    id: accessor as string,
+    header,
+    cell: (info) => {
+      const value = info.getValue();
+      if (typeof value !== "number") return "-";
+
+      return (
+        <div className="text-sm text-gray-900">
+          {new Intl.NumberFormat(options?.locale ?? "pt-BR", {
+            style: "currency",
+            currency: options?.currency ?? "BRL",
+          }).format(value)}
+        </div>
+      );
+    },
+    enableSorting: options?.enableSorting !== false,
+  }) as ColumnDef<TData>;
+}
+
+// Helper to create a currency column with a formatter function
+export function createCurrencyFormatColumn<TData extends BaseEntity>(
+  accessor: keyof TData,
+  header: string,
+  options?: {
+    locale?: string;
+    currency?: string;
+    enableSorting?: boolean;
+    formatter?: (value: unknown) => string;
+  }
+): ColumnDef<TData> {
+  const columnHelper = createColumnHelper<TData>();
+
+  return columnHelper.accessor((row) => row[accessor], {
+    id: accessor as string,
+    header,
+    cell: (info) => {
+      const value = info.getValue();
+      if (value == null) return "-";
+
+      if (options?.formatter) {
+        return (
+          <div className="text-sm text-gray-900">
+            {options.formatter(value)}
+          </div>
+        );
+      }
+
+      return (
+        <div className="text-sm text-gray-900">
+          {typeof value === "number"
+            ? new Intl.NumberFormat(options?.locale ?? "pt-BR", {
+                style: "currency",
+                currency: options?.currency ?? "BRL",
+              }).format(value)
+            : String(value)}
+        </div>
+      );
     },
     enableSorting: options?.enableSorting !== false,
   }) as ColumnDef<TData>;

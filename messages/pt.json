@@ -151,6 +151,15 @@
       "completed": "Concluída",
       "cancelled": "Cancelada"
     },
+    "pagination": {
+      "showing": "Exibindo",
+      "of": "de",
+      "itemsPerPage": "Itens por página",
+      "firstPage": "Primeira página",
+      "previousPage": "Página anterior",
+      "nextPage": "Próxima página",
+      "lastPage": "Última página"
+    },
     "columns": {
       "number": "Ordem",
       "client": "Cliente",
@@ -350,6 +359,8 @@
     "expiresAt": "Expira em",
     "noContracts": "Nenhum contrato encontrado",
     "noResults": "Nenhum contrato encontrado para esta busca.",
+    "noContractsRegistered": "Nenhum contrato cadastrado. Clique em 'Novo Contrato' para começar.",
+    "noContractsFound": "Nenhum contrato encontrado para esta busca.",
     "searchPlaceholder": "Buscar por título, cliente ou descrição...",
     "filterStatus": "Filtrar por status",
     "allStatus": "Todos os Status",
@@ -379,6 +390,13 @@
       "expired": "Expirado",
       "cancelled": "Cancelado"
     },
+    "filter": {
+      "all": "Todos os Contratos",
+      "pending": "Pendentes",
+      "signed": "Assinados",
+      "expired": "Expirados",
+      "cancelled": "Cancelados"
+    },
     "form": {
       "title": "Título",
       "titlePlaceholder": "Título do contrato",
@@ -397,6 +415,7 @@
       "client": "Cliente",
       "status": "Status",
       "document": "Documento",
+      "description": "Descrição",
       "signedAt": "Assinado em",
       "expiresAt": "Expira em",
       "created": "Criado em",
@@ -409,5 +428,82 @@
     "sync": "Sincronizando com o servidor...",
     "confirmDelete": "Confirmar Exclusão",
     "confirmDeleteDescription": "Tem certeza que deseja excluir os contratos selecionados? Esta ação não pode ser desfeita."
+  },
+  "receipts": {
+    "title": "Recibos",
+    "newReceipt": "Novo Recibo",
+    "editReceipt": "Editar Recibo",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "cancel": "Cancelar",
+    "errorSaving": "Erro ao salvar recibo. Tente novamente.",
+    "formValidationError": "Corrija os erros do formulário antes de enviar.",
+    "loading": "Carregando...",
+    "loadMore": "Carregar Mais",
+    "loadingMore": "Carregando mais...",
+    "noReceiptsFound": "Nenhum recibo encontrado para esta pesquisa.",
+    "noReceiptsRegistered": "Nenhum recibo registrado. Clique em 'Novo Recibo' para começar.",
+    "uploadingFiles": "Enviando arquivos...",
+    "bulkDelete": "Excluir {count} selecionados",
+    "deleteConfirm": {
+      "title": "Confirmar exclusão",
+      "description": "Você está prestes a excluir {count} recibo(s). Esta ação não pode ser desfeita."
+    },
+    "columns": {
+      "number": "Recibo #",
+      "client": "Cliente",
+      "date": "Data",
+      "dueDate": "Data de Vencimento",
+      "paymentMethod": "Forma de Pagamento",
+      "status": "Status",
+      "total": "Total",
+      "items": "Itens",
+      "created": "Criado",
+      "updated": "Atualizado",
+      "actions": "Ações"
+    },
+    "paymentMethods": {
+      "cash": "Dinheiro",
+      "credit_card": "Cartão de Crédito",
+      "debit_card": "Cartão de Débito",
+      "bank_transfer": "Transferência Bancária",
+      "pix": "PIX",
+      "installment": "Parcelamento"
+    },
+    "status": {
+      "draft": "Rascunho",
+      "issued": "Emitido",
+      "paid": "Pago",
+      "overdue": "Vencido",
+      "cancelled": "Cancelado"
+    },
+    "form": {
+      "client": "Cliente",
+      "selectClient": "Selecione um cliente",
+      "date": "Data",
+      "dueDate": "Data de Vencimento",
+      "paymentMethod": "Forma de Pagamento",
+      "selectPaymentMethod": "Selecione a forma de pagamento",
+      "status": "Status",
+      "selectStatus": "Selecione o status",
+      "notes": "Observações",
+      "notesPlaceholder": "Adicione observações ao recibo aqui...",
+      "subtotal": "Subtotal",
+      "tax": "Imposto",
+      "discount": "Desconto",
+      "total": "Total",
+      "items": {
+        "title": "Itens",
+        "description": "Descrição",
+        "descriptionPlaceholder": "Descrição do item",
+        "quantity": "Quantidade",
+        "unitPrice": "Preço Unitário",
+        "amount": "Valor",
+        "serviceDate": "Data do Serviço",
+        "add": "Adicionar Item"
+      }
+    }
   }
 }

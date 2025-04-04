@@ -51,4 +51,16 @@ export interface ApiRouteMap {
   "/api/service-orders/search": {
     GET: typeof import("../app/api/service-orders/search/route").GET;
   };
+  "/api/receipts/bulk": {
+    POST: typeof import("../app/api/receipts/bulk/route").POST;
+  };
+  "/api/receipts": {
+    GET: typeof import("../app/api/receipts/route").GET;
+    POST: typeof import("../app/api/receipts/route").POST;
+    PUT: typeof import("../app/api/receipts/route").PUT;
+    DELETE: typeof import("../app/api/receipts/route").DELETE;
+  };
+  "/api/receipts/search": {
+    GET: typeof import("../app/api/receipts/search/route").GET;
+  };
 }

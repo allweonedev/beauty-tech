@@ -45,6 +45,7 @@ model Client {
     interactions  ClientInteraction[]
     serviceOrders ServiceOrder[]
     contracts     Contract[]
+    receipts      Receipt[]
     source        String              @default("manual")
 
     @@map("clients")
@@ -77,6 +78,7 @@ model Product {
     createdAt     DateTime       @default(now())
     updatedAt     DateTime       @default(now())
     serviceOrders ServiceOrder[]
+    receiptItems  ReceiptItem[]
 
     @@map("products")
 }
@@ -118,7 +120,7 @@ model ClientInteraction {
 
 model ServiceOrder {
     id             String    @id @default(uuid())
-    number         String
+    number         Int       @default(autoincrement()) @db.Integer
     clientId       String
     client         Client    @relation(fields: [clientId], references: [id])
     productId      String?
@@ -150,6 +152,42 @@ model Contract {
     updatedAt    DateTime  @updatedAt
 
     @@map("contracts")
+}
+
+model Receipt {
+    id            String        @id @default(uuid())
+    number        String        @unique
+    clientId      String
+    client        Client        @relation(fields: [clientId], references: [id])
+    date          DateTime
+    dueDate       DateTime?
+    paymentMethod String
+    status        String        @default("draft")
+    subtotal      Decimal       @default(0)
+    tax           Decimal       @default(0)
+    discount      Decimal       @default(0)
+    total         Decimal       @default(0)
+    notes         String?
+    items         ReceiptItem[]
+    createdAt     DateTime      @default(now())
+    updatedAt     DateTime      @updatedAt
+
+    @@map("receipts")
+}
+
+model ReceiptItem {
+    id          String    @id @default(uuid())
+    receiptId   String
+    receipt     Receipt   @relation(fields: [receiptId], references: [id])
+    description String
+    quantity    Decimal   @default(1)
+    unitPrice   Decimal
+    amount      Decimal
+    serviceDate DateTime?
+    productId   String?
+    product     Product?  @relation(fields: [productId], references: [id])
+
+    @@map("receipt_items")
 }
 
 // NextAuth.js models

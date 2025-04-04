@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 
 // Schema for validation
 const serviceOrderSchema = z.object({
-  number: z.string().min(1, "Order number is required"),
   clientId: z.string().min(1, "Client ID is required"),
   productId: z.string().optional().nullable(),
   status: z
@@ -81,6 +80,7 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validation = serviceOrderSchema.safeParse(body);
     if (!validation.success) {
+      console.log(validation.error.errors);
       return NextResponse.json(
         { error: validation.error.errors },
         { status: 400 }

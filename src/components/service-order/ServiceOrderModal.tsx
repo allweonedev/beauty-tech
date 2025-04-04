@@ -41,8 +41,10 @@ import { useProducts } from "@/hooks/useProducts";
 export interface ServiceOrder {
   id: string;
   number: string;
-  client: Client;
+  client?: Client;
+  clientId?: string;
   product?: Product;
+  productId?: string;
   status: "pending" | "in_progress" | "completed" | "cancelled";
   scheduledDate?: Date;
   completedDate?: Date;
@@ -113,8 +115,8 @@ export function ServiceOrderModal({
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderFormSchema),
     defaultValues: {
-      clientId: serviceOrder?.client.id ?? "",
-      productId: serviceOrder?.product?.id ?? "",
+      clientId: serviceOrder?.clientId ?? serviceOrder?.client?.id ?? "",
+      productId: serviceOrder?.productId ?? serviceOrder?.product?.id ?? "",
       status: serviceOrder?.status ?? "pending",
       description: serviceOrder?.description ?? "",
       technicalNotes: serviceOrder?.technicalNotes ?? "",
@@ -134,8 +136,8 @@ export function ServiceOrderModal({
   useEffect(() => {
     if (open) {
       form.reset({
-        clientId: serviceOrder?.client.id ?? "",
-        productId: serviceOrder?.product?.id ?? "",
+        clientId: serviceOrder?.clientId ?? serviceOrder?.client?.id ?? "",
+        productId: serviceOrder?.productId ?? serviceOrder?.product?.id ?? "",
         status: serviceOrder?.status ?? "pending",
         description: serviceOrder?.description ?? "",
         technicalNotes: serviceOrder?.technicalNotes ?? "",
@@ -202,14 +204,11 @@ export function ServiceOrderModal({
     }
   );
 
-  // Add these hooks at the component level
-  const { data: allClients = [] } = useClients();
-  const { data: allProducts = [] } = useProducts();
-
   // Form submission handler
   const onSubmit = async (data: ServiceOrderFormValues) => {
     setError(null);
 
+    console.log(data);
     try {
       // Upload files if there are any
       if (uploadingFiles.length > 0) {
@@ -220,25 +219,15 @@ export function ServiceOrderModal({
         return;
       }
 
-      const client = allClients.find((c) => c.id === data.clientId);
-      const product = data.productId
-        ? allProducts.find((p) => p.id === data.productId)
-        : undefined;
-
-      if (!client) {
-        setError(t("serviceOrders.errorClientRequired"));
-        return;
-      }
-
       const scheduledDateTime =
         data.scheduledDate && data.scheduledTime
           ? new Date(`${data.scheduledDate}T${data.scheduledTime}`)
           : undefined;
 
-      // Use the client and product data but cast them to the expected types
+      // Prepare data for API with client ID instead of client object
       const serviceOrderData: Partial<ServiceOrder> = {
-        client: client as unknown as Client,
-        product: product as unknown as Product | undefined,
+        clientId: data.clientId,
+        productId: data.productId,
         status: data.status,
         description: data.description,
         technicalNotes: data.technicalNotes ?? "",
@@ -262,25 +251,15 @@ export function ServiceOrderModal({
       // Upload completed, now submit the form with the updated attachments
       const data = form.getValues();
 
-      const client = allClients.find((c) => c.id === data.clientId);
-      const product = data.productId
-        ? allProducts.find((p) => p.id === data.productId)
-        : undefined;
-
-      if (!client) {
-        setError(t("serviceOrders.errorClientRequired"));
-        return;
-      }
-
       const scheduledDateTime =
         data.scheduledDate && data.scheduledTime
           ? new Date(`${data.scheduledDate}T${data.scheduledTime}`)
           : undefined;
 
-      // Use the client and product data but cast them to the expected types
+      // Prepare data for API with client ID instead of client object
       const serviceOrderData: Partial<ServiceOrder> = {
-        client: client as unknown as Client,
-        product: product as unknown as Product | undefined,
+        clientId: data.clientId,
+        productId: data.productId,
         status: data.status,
         description: data.description,
         technicalNotes: data.technicalNotes ?? "",
@@ -297,8 +276,6 @@ export function ServiceOrderModal({
     isUploading,
     uploadingInProgress,
     form,
-    allClients,
-    allProducts,
     attachments,
     maintenanceHistory,
     t,

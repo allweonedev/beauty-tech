@@ -3,7 +3,10 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import ServiceOrdersTable from "@/components/service-order/ServiceOrdersTable";
-import { ServiceOrderModal } from "@/components/service-order/ServiceOrderModal";
+import {
+  ServiceOrderModal,
+  type ServiceOrder,
+} from "@/components/service-order/ServiceOrderModal";
 import { useToast } from "@/components/ui/use-toast";
 import {
   usePaginatedServiceOrders,
@@ -13,7 +16,6 @@ import {
   useBulkDeleteServiceOrders,
   useServiceOrderSearch,
 } from "@/hooks/useServiceOrders";
-import type { ServiceOrder } from "@/components/service-order/ServiceOrderModal";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function ServiceOrdersPage() {

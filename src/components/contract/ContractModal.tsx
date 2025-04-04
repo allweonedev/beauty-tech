@@ -20,20 +20,25 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import { useToast } from "@/components/ui/use-toast";
-import type { Client } from "@/types/client";
 import type { Contract } from "@/types/contract";
 import { useUploadThing } from "@/hooks/useUploadthing";
+import { ClientSelect } from "@/components/selects/ClientSelect";
+
+// Define a DTO interface for contract submission
+interface ContractDTO {
+  title: string;
+  description: string;
+  clientId: string;
+  documentUrl?: string;
+  status?: "pending" | "signed" | "expired" | "cancelled";
+  expiresAt?: Date;
+  updatedAt?: Date;
+}
 
 // Form validation schema
 const contractFormSchema = z.object({
@@ -55,16 +60,14 @@ type ContractFormValues = z.infer<typeof contractFormSchema>;
 
 interface ContractModalProps {
   contract?: Contract;
-  clients: Client[];
   onClose: () => void;
-  onSave: (contract: Partial<Contract>) => void;
+  onSave: (contract: ContractDTO) => void;
   open: boolean;
   isMutating?: boolean;
 }
 
 export function ContractModal({
   contract,
-  clients,
   onClose,
   onSave,
   open,
@@ -137,27 +140,17 @@ export function ContractModal({
         return;
       }
 
-      const client = clients.find((c) => c.id === data.clientId);
-      if (!client) {
-        toast({
-          variant: "destructive",
-          title: t("common.error") ?? "Erro",
-          description:
-            t("contracts.clientNotFound") ?? "Cliente não encontrado",
-        });
-        return;
-      }
-
-      const contractData: Partial<Contract> = {
+      const contractData: ContractDTO = {
         title: data.title,
         description: data.description,
-        client,
+        clientId: data.clientId,
         documentUrl: data.documentUrl,
         status: contract?.status ?? "pending",
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
         updatedAt: new Date(),
       };
 
+      console.log("Submitting contract data:", contractData);
       onSave(contractData);
       onClose();
     } catch (err) {
@@ -173,38 +166,35 @@ export function ContractModal({
   // Watch for upload completion and submit the form
   useEffect(() => {
     if (isUploading && !uploadingInProgress) {
-      // Upload finished, now submit form with the URL
-      const data = form.getValues();
+      try {
+        // Upload finished, now submit form with the URL
+        const data = form.getValues();
 
-      const client = clients.find((c) => c.id === data.clientId);
-      if (!client) {
+        const contractData: ContractDTO = {
+          title: data.title,
+          description: data.description,
+          clientId: data.clientId,
+          documentUrl: data.documentUrl,
+          status: contract?.status ?? "pending",
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
+          updatedAt: new Date(),
+        };
+
+        onSave(contractData);
+        onClose();
+      } catch (err) {
         toast({
           variant: "destructive",
-          title: t("common.error") ?? "Erro",
-          description:
-            t("contracts.clientNotFound") ?? "Cliente não encontrado",
+          title: t("contracts.saveError") ?? "Erro ao salvar contrato",
+          description: String(err),
         });
-        return;
+        setIsUploading(false);
       }
-
-      const contractData: Partial<Contract> = {
-        title: data.title,
-        description: data.description,
-        client,
-        documentUrl: data.documentUrl,
-        status: contract?.status ?? "pending",
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
-        updatedAt: new Date(),
-      };
-
-      onSave(contractData);
-      onClose();
     }
   }, [
     isUploading,
     uploadingInProgress,
     form,
-    clients,
     contract,
     t,
     toast,
@@ -336,32 +326,16 @@ export function ContractModal({
                     <FormLabel>
                       {t("contracts.form.client") || "Cliente"}
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              t("contracts.form.selectClient") ||
-                              "Selecione um cliente"
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">
-                          {t("contracts.form.selectClient") ||
-                            "Selecione um cliente"}
-                        </SelectItem>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ClientSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={
+                          t("contracts.form.selectClient") ||
+                          "Selecione um cliente"
+                        }
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -393,7 +367,7 @@ export function ContractModal({
                       {t("contracts.form.document") || "Documento"}
                     </FormLabel>
                     <FormControl>
-                      <>
+                      <div>
                         {contract?.documentUrl ? (
                           <div className="flex items-center justify-between p-4 bg-input rounded-lg">
                             <div className="flex items-center">
@@ -460,7 +434,7 @@ export function ContractModal({
                             : {file.name}
                           </p>
                         )}
-                      </>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
