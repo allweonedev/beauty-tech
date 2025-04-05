@@ -36,7 +36,7 @@ export function getServiceOrderColumns({
             {info.getValue<string>()}
           </div>
           <div className="text-sm text-gray-500">
-            {info.row.original.client?.name || "-"}
+            {info.row.original.client?.name ?? "-"}
           </div>
         </div>
       ),
